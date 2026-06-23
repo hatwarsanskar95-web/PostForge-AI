@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <circle cx="100" cy="100" r="100" fill="#C5D8E8"/>
+  <circle cx="100" cy="85" r="40" fill="#D4A574"/>
+  <path d="M60 170 Q60 120 100 120 Q140 120 140 170" fill="#1B3A5C"/>
+  <path d="M65 75 Q65 45 100 45 Q135 45 135 75 L130 65 Q125 50 100 50 Q75 50 70 65 Z" fill="#2C1810"/>
+  <rect x="80" y="70" width="12" height="6" rx="3" fill="#2C1810" opacity="0.8"/>
+  <rect x="108" y="70" width="12" height="6" rx="3" fill="#2C1810" opacity="0.8"/>
+  <circle cx="86" cy="78" r="3" fill="#2C1810"/>
+  <circle cx="114" cy="78" r="3" fill="#2C1810"/>
+  <path d="M94 95 Q100 100 106 95" stroke="#C4896A" stroke-width="2" fill="none"/>
+  <rect x="82" y="68" width="16" height="16" rx="2" fill="none" stroke="#8B7355" stroke-width="1.5"/>
+  <rect x="102" y="68" width="16" height="16" rx="2" fill="none" stroke="#8B7355" stroke-width="1.5"/>
+  <line x1="98" y1="72" x2="102" y2="72" stroke="#8B7355" stroke-width="1.5"/>
+  <path d="M85 130 L85 145 Q85 150 90 150 L110 150 Q115 150 115 145 L115 130" fill="#FFFFFF"/>
+  <line x1="100" y1="125" x2="100" y2="145" stroke="#A0352A" stroke-width="3"/>
+</svg>

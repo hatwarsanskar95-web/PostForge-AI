@@ -1,0 +1,335 @@
+# Product Requirements Document (PRD)
+
+## Product Name
+
+AI LinkedIn Content Generator
+
+## Vision
+
+Build a modern SaaS platform that helps students, developers, job seekers, and professionals create high-quality LinkedIn content in seconds using AI.
+
+The goal is NOT to directly post to LinkedIn.
+
+The goal is to help users generate professional LinkedIn-ready content that they can copy and post manually.
+
+The product should focus on solving the problem of:
+
+"I have something worth sharing, but I don't know how to write a good LinkedIn post."
+
+---
+
+# Core Principles
+
+1. Build like a real SaaS product.
+2. User experience is more important than feature count.
+3. Every feature must provide real value.
+4. AI output quality is the highest priority.
+5. Architecture should support multiple AI providers.
+6. Development must happen in very small, manageable steps.
+7. Never attempt large feature drops.
+8. Each step should be independently testable.
+9. We are optimizing for learning, maintainability, and placement impact.
+10. We are building something people can actually use.
+
+---
+
+# Target Users
+
+## Primary Users
+
+* College students
+* Placement seekers
+* Developers
+* Freshers
+* Job seekers
+
+## Secondary Users
+
+* Freelancers
+* Content creators
+* Startup founders
+* Professionals building personal brands
+
+---
+
+# Problem Statement
+
+Most people:
+
+* Do not know how to write professional LinkedIn posts.
+* Struggle with formatting.
+* Don't know which hashtags to use.
+* Don't know how to structure achievements.
+* Have screenshots, certificates, projects, or accomplishments but cannot convert them into engaging content.
+
+This platform should solve that problem.
+
+---
+
+# MVP Goal
+
+A user should be able to:
+
+1. Sign in.
+2. Describe something they want to share.
+3. Click Generate.
+4. Receive a professional LinkedIn post.
+5. Copy the post.
+6. Publish it manually on LinkedIn.
+
+If this workflow works well, the MVP is successful.
+
+---
+
+# Core User Flows
+
+## Flow 1 — Topic Based Generation
+
+User enters:
+
+* Topic
+* Achievement
+* Experience
+* Project
+
+AI generates:
+
+* Hook
+* Main content
+* Conclusion
+* Call to action
+* Hashtags
+
+User copies and posts.
+
+---
+
+## Flow 2 — Project Based Generation
+
+User describes:
+
+* Project name
+* Tech stack
+* Features
+* Challenges
+* Learnings
+
+AI generates a complete LinkedIn project showcase post.
+
+---
+
+## Flow 3 — Achievement Based Generation
+
+User enters:
+
+* Internship
+* Placement
+* Certificate
+* Competition
+* Hackathon
+
+AI generates an achievement-focused post.
+
+---
+
+# Future User Flows
+
+## Image-Based Generation
+
+User uploads:
+
+* Certificate
+* Project screenshot
+* Event image
+* Hackathon photo
+
+AI analyzes the image.
+
+AI generates a relevant LinkedIn post.
+
+---
+
+## Resume-Based Generation
+
+User uploads resume.
+
+AI generates:
+
+* Introduction post
+* Skills showcase post
+* Project showcase post
+* Career journey post
+
+---
+
+## Content Improvement
+
+User pastes an existing LinkedIn post.
+
+AI improves:
+
+* Clarity
+* Professionalism
+* Engagement
+* Structure
+
+---
+
+# AI Requirements
+
+The system must support multiple AI providers.
+
+Examples:
+
+* Gemini
+* OpenAI
+* Claude
+
+The platform must be designed so the provider can be switched without rebuilding the product.
+
+AI provider implementation details should remain flexible.
+
+---
+
+# Output Requirements
+
+Generated content should include:
+
+## Hook
+
+Strong opening sentence.
+
+## Body
+
+Structured content.
+
+## Learnings
+
+What was gained from the experience.
+
+## CTA
+
+Optional engagement question.
+
+## Hashtags
+
+Relevant hashtags.
+
+---
+
+# Content Styles
+
+Users should eventually be able to choose:
+
+* Professional
+* Student
+* Storytelling
+* Technical
+* Founder
+* Personal Branding
+
+Different styles should noticeably change the output.
+
+---
+
+# Dashboard Requirements
+
+Users should be able to:
+
+* Generate content
+* View previous generations
+* Reuse content
+* Copy content quickly
+
+The experience should feel clean and fast.
+
+---
+
+# Non-Functional Requirements
+
+## Performance
+
+Generation should feel fast.
+
+## Scalability
+
+Architecture should support growth.
+
+## Maintainability
+
+Code should be easy to extend.
+
+## Security
+
+User data should remain protected.
+
+## Reliability
+
+Failures should be handled gracefully.
+
+---
+
+# Design Direction
+
+Modern SaaS design.
+
+Requirements:
+
+* Clean
+* Professional
+* Fast
+* Minimal
+* Placement-worthy
+
+Avoid:
+
+* Clutter
+* Excessive animations
+* Feature overload
+
+The interface should immediately communicate value.
+
+---
+
+# Success Criteria
+
+A successful user session is:
+
+1. User opens platform.
+2. User enters information.
+3. AI generates useful content.
+4. User copies content.
+5. User feels confident posting it.
+
+If users repeatedly return to generate new posts, the product is successful.
+
+---
+
+# Development Methodology
+
+IMPORTANT:
+
+We will build this product in extremely small steps.
+
+Do NOT create a huge implementation at once.
+
+Do NOT combine multiple major features into one phase.
+
+Break everything down into the smallest possible tasks.
+
+Even if implementation requires 50–100 steps, that is acceptable.
+
+Each step must:
+
+* Be small.
+* Be testable.
+* Be independently reviewable.
+* Be completed before moving forward.
+
+After reviewing this PRD, create a detailed implementation plan with very small incremental steps.
+
+Do not skip ahead.
+
+Do not assume future features are being built now.
+
+Focus only on the next smallest step at any given time.
