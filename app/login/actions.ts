@@ -3,6 +3,12 @@
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 
+const getBaseUrl = () => {
+  let url = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || 'http://localhost:3000'
+  url = url.startsWith('http') ? url : `https://${url}`
+  return url.replace(/\/$/, '')
+}
+
 export async function login(email: string, password: string): Promise<{ error: string | null, type?: 'check_email' | 'success' }> {
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -38,7 +44,7 @@ export async function signup(data: {
         linkedin_url: data.linkedinUrl,
         avatar_id: data.avatarId,
       },
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/verify-success`,
+      emailRedirectTo: `${getBaseUrl()}/auth/callback?next=/verify-success`,
     },
   })
 
@@ -59,7 +65,7 @@ export async function signup(data: {
 export async function resetPassword(email: string): Promise<{ error: string | null }> {
   const supabase = await createClient()
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/update-password`,
+    redirectTo: `${getBaseUrl()}/auth/callback?next=/update-password`,
   })
   
   if (error) {
@@ -107,7 +113,7 @@ export async function resendVerificationEmail(email: string): Promise<{ error: s
     type: 'signup',
     email,
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?next=/verify-success`,
+      emailRedirectTo: `${getBaseUrl()}/auth/callback?next=/verify-success`,
     }
   })
   return { error: error?.message || null }

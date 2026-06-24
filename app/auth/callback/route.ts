@@ -55,7 +55,7 @@ export async function GET(request: Request) {
     // but the auto-login (PKCE) failed (e.g., opened in a different browser).
     // We should STILL show them the Verification Success popup on the login page.
     if (code || next === '/verify-success') {
-      return NextResponse.redirect(buildRedirectUrl('/login?verified=true'))
+      return NextResponse.redirect(buildRedirectUrl('/login?mode=signup&verified=true'))
     }
     // Truly not authenticated and not a verification — send to login
     return NextResponse.redirect(buildRedirectUrl('/login?message=Sign+in+failed.+Please+try+again.'))
@@ -111,8 +111,8 @@ export async function GET(request: Request) {
   // --- Step 6: Everything is good — redirect to intended destination ---
   // Force /login?verified=true for email signups in case Supabase stripped the ?next parameter
   let finalRedirect = next;
-  if (isEmailProvider) {
-    finalRedirect = '/login?verified=true';
+  if (isEmailProvider || type === 'signup' || next === '/verify-success' || code) {
+    finalRedirect = '/login?mode=signup&verified=true';
   }
 
   return NextResponse.redirect(buildRedirectUrl(finalRedirect))

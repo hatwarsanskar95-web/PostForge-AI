@@ -16,8 +16,10 @@ const CustomLogo = () => (
 
 function LoginContent() {
   const searchParams = useSearchParams()
-  const isCompleteMode = searchParams.get('mode') === 'complete'
-  const isVerified = searchParams.get('verified') === 'true'
+  const modeParam = searchParams.get('mode')
+  const isCompleteMode = modeParam === 'complete'
+  const isSignupMode = modeParam === 'signup'
+  const isVerified = searchParams.has('verified')
 
   const [defaultEmail, setDefaultEmail] = useState('')
   const [defaultName, setDefaultName] = useState('')
@@ -44,9 +46,18 @@ function LoginContent() {
     }
 
     if (pendingEmail) {
-      setPendingVerificationEmail(pendingEmail)
-      setIsLoading(false)
-      return
+      if (isVerified) {
+        try {
+          sessionStorage.removeItem('pendingVerificationEmail')
+        } catch (e) {
+          console.warn('[Auth] sessionStorage access denied:', e)
+        }
+        pendingEmail = null
+      } else {
+        setPendingVerificationEmail(pendingEmail)
+        setIsLoading(false)
+        return
+      }
     }
 
     // Check for Supabase hash errors (e.g. #error_code=otp_expired)
@@ -177,7 +188,7 @@ function LoginContent() {
       onEmailSubmit={handleEmailSubmit as any}
       onResetPassword={handleResetPassword}
       onResendEmail={handleResendEmail}
-      initialMode={isCompleteMode ? 'complete' : 'initial'}
+      initialMode={isCompleteMode ? 'complete' : isSignupMode ? 'signup' : 'initial'}
       defaultEmail={defaultEmail}
       defaultName={defaultName}
       pendingVerificationEmail={pendingVerificationEmail}

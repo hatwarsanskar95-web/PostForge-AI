@@ -21,6 +21,24 @@ function HomeContent() {
   }, [])
 
   useEffect(() => {
+    const code = searchParams.get('code')
+    const tokenHash = searchParams.get('token_hash')
+    
+    // Check for Implicit flow hash
+    if (typeof window !== 'undefined') {
+      const hash = window.location.hash
+      if (hash.includes('access_token=') || hash.includes('type=signup') || hash.includes('token_hash=')) {
+        router.replace('/login?mode=signup&verified=true' + hash)
+        return
+      }
+    }
+
+    if (code || tokenHash) {
+      // Supabase fallback to Site URL: redirect to the proper auth callback
+      router.replace(`/auth/callback?${searchParams.toString()}&next=/verify-success`)
+      return
+    }
+
     const error = searchParams.get('error')
     const errorCode = searchParams.get('error_code')
     if (error || errorCode) {
