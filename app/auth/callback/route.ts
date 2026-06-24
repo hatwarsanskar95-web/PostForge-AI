@@ -96,23 +96,28 @@ export async function GET(request: NextRequest) {
 
       if (!isEmailProvider) {
         // Query public.users to detect first-time vs returning Google user.
-        // Use admin client — no cookie dependency needed for a simple read.
+        // IMPORTANT: The handle_new_user DB trigger auto-creates a row for ALL
+        // new auth users immediately — so checking row existence always returns true.
+        // Instead, check whether the profile is COMPLETE by verifying linkedin_url
+        // is non-empty (trigger inserts '' for Google users who haven't onboarded).
         const { createAdminClient } = await import('@/lib/supabase/server')
         const adminClient = createAdminClient()
         const { data: existingProfile } = await adminClient
           .from('users')
-          .select('id')
+          .select('id, linkedin_url')
           .eq('id', sessionUser!.id)
           .maybeSingle()
 
-        if (existingProfile) {
-          // Returning Google user — profile exists → go to dashboard
+        const isProfileComplete = !!(existingProfile?.linkedin_url && existingProfile.linkedin_url.trim() !== '')
+
+        if (isProfileComplete) {
+          // Returning Google user — profile complete → go to dashboard
           destination = '/dashboard'
-          console.log('[auth/callback] Existing Google user — redirecting to /dashboard')
+          console.log('[auth/callback] Existing Google user (profile complete) — redirecting to /dashboard')
         } else {
-          // First-time Google user — no profile yet → go to onboarding
+          // First-time Google user — profile empty (trigger row exists but no data)
           destination = '/login?mode=complete'
-          console.log('[auth/callback] New Google user — redirecting to /login?mode=complete')
+          console.log('[auth/callback] New Google user (profile incomplete) — redirecting to /login?mode=complete')
         }
       } else if (type === 'signup' || next === '/verify-success') {
         // Email signup verification → show verified popup
