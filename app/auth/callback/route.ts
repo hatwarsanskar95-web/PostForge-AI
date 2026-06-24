@@ -87,14 +87,33 @@ export async function GET(request: NextRequest) {
       sessionUser = data.user
       console.log('[auth/callback] Session established. User:', sessionUser?.email, '| Provider:', sessionUser?.app_metadata?.provider)
 
-      // Build the final redirect with the exact cookies from the session exchange
+      // --- Step 5: Google/OAuth user ---
+      // Check if a profile already exists in public.users.
+      // New users (no profile) → onboarding at /login?mode=complete.
+      // Existing users (profile found) → /dashboard directly.
       const isEmailProvider = sessionUser?.app_metadata?.provider === 'email'
       let destination: string
 
       if (!isEmailProvider) {
-        // Google/OAuth → always /dashboard, no verification needed
-        destination = '/dashboard'
-        console.log('[auth/callback] Google/OAuth user — redirecting to /dashboard')
+        // Query public.users to detect first-time vs returning Google user.
+        // Use admin client — no cookie dependency needed for a simple read.
+        const { createAdminClient } = await import('@/lib/supabase/server')
+        const adminClient = createAdminClient()
+        const { data: existingProfile } = await adminClient
+          .from('users')
+          .select('id')
+          .eq('id', sessionUser!.id)
+          .maybeSingle()
+
+        if (existingProfile) {
+          // Returning Google user — profile exists → go to dashboard
+          destination = '/dashboard'
+          console.log('[auth/callback] Existing Google user — redirecting to /dashboard')
+        } else {
+          // First-time Google user — no profile yet → go to onboarding
+          destination = '/login?mode=complete'
+          console.log('[auth/callback] New Google user — redirecting to /login?mode=complete')
+        }
       } else if (type === 'signup' || next === '/verify-success') {
         // Email signup verification → show verified popup
         destination = '/login?verified=true'
