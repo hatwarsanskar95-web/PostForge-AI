@@ -398,6 +398,8 @@ export default function PricingSection6({ prefill }: PricingSection4Props) {
                   <div className="space-y-3 pt-4 border-t border-[#1e2a4a] flex-1">
                     <h4 className="font-semibold text-sm mb-3 text-indigo-300">
                       {plan.includes[0]}
+                      {isYearly && plan.includes[0] === "30 AI Generations per Month" ? "(Till 1 Year)" : ""}
+
                     </h4>
                     <ul className="space-y-3">
                       {plan.includes.slice(1).map((feature, featureIndex) => (

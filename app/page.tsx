@@ -27,15 +27,50 @@ function HomeContent() {
     // Check for Implicit flow hash
     if (typeof window !== 'undefined') {
       const hash = window.location.hash
-      if (hash.includes('access_token=') || hash.includes('type=signup') || hash.includes('token_hash=')) {
-        router.replace('/login?mode=signup&verified=true' + hash)
+      if (hash.includes('access_token=') || hash.includes('token_hash=')) {
+        const hashParams = new URLSearchParams(hash.substring(1))
+        const hashType = hashParams.get('type')
+        if (hashType === 'signup') {
+          // Genuine email verification via magic link / OTP
+          // SPEC §4: redirect to /login?verified=true — NEVER include mode=signup
+          console.log('[home] Email verification hash detected — showing verified popup')
+          router.replace('/login?verified=true')
+        } else if (hashType === 'recovery') {
+          // Password reset token — must go to update-password, NOT signup form
+          console.log('[home] Password recovery hash detected — routing to auth callback with update-password')
+          router.replace('/auth/callback' + hash.replace('#', '?') + '&next=/update-password')
+        } else {
+          // Google OAuth or other provider implicit flow — route to auth callback
+          console.log('[home] OAuth token in hash (type=' + hashType + ') — routing to auth callback')
+          router.replace('/auth/callback' + hash)
+        }
         return
       }
     }
 
-    if (code || tokenHash) {
-      // Supabase fallback to Site URL: redirect to the proper auth callback
-      router.replace(`/auth/callback?${searchParams.toString()}&next=/verify-success`)
+    // Supabase site-URL fallback: query params contain code or token_hash
+    // CRITICAL: 'code' is the PKCE param used by Google OAuth.
+    //   → Do NOT append next=/verify-success for code flows. Let /auth/callback
+    //     decide the destination based on the provider (Google → /dashboard).
+    // 'token_hash' is the email OTP param.
+    //   → Safe to append next=/verify-success because this is always email verification.
+    if (code) {
+      console.log('[home] PKCE code detected (Google OAuth site-URL fallback) — routing to auth callback without verify-success')
+      router.replace(`/auth/callback?${searchParams.toString()}`)
+      return
+    }
+    if (tokenHash) {
+      // Distinguish recovery (password reset) from signup (email verification).
+      // CRITICAL: appending next=/verify-success to a recovery token sends
+      // the user to the login/signup form instead of the password update page.
+      const tokenType = searchParams.get('type')
+      if (tokenType === 'recovery') {
+        console.log('[home] Password reset token_hash detected — routing to auth callback with update-password')
+        router.replace(`/auth/callback?${searchParams.toString()}&next=/update-password`)
+      } else {
+        console.log('[home] Email OTP token_hash detected — routing to auth callback with verify-success')
+        router.replace(`/auth/callback?${searchParams.toString()}&next=/verify-success`)
+      }
       return
     }
 

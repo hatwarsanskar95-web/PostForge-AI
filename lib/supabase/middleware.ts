@@ -31,6 +31,7 @@ export async function updateSession(request: NextRequest) {
 
   const isDashboard = pathname.startsWith('/dashboard')
   const isLogin = pathname.startsWith('/login')
+  const isSignup = pathname.startsWith('/signup')
   const isAuthCallback = pathname.startsWith('/auth/callback')
   const isVerifySuccess = pathname.startsWith('/verify-success')
   const isUpdatePassword = pathname.startsWith('/update-password')
@@ -54,17 +55,33 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  if (isLogin && user) {
+  // SPEC §12: Authenticated users on /login or /signup must be redirected to /dashboard
+  if ((isLogin || isSignup) && user) {
+    const isVerifiedQuery = searchParams.get('verified') === 'true'
+
+    console.log('[AUTH DEBUG middleware]', {
+      userEmail: user.email,
+      provider: user.app_metadata?.provider,
+      isEmailProvider,
+      isConfirmed,
+      isCompleteMode,
+      isVerifiedQuery,
+      pathname,
+    })
+
     // Email user not yet confirmed — let them stay to see the verification prompt
     if (isEmailProvider && !isConfirmed) {
       return supabaseResponse
     }
-    const isVerifiedQuery = searchParams.get('verified') === 'true'
-    // User is in profile-completion mode (Google first-time signup) or seeing verification success
-    if (isCompleteMode || isVerifiedQuery) {
+
+    // ONLY allow staying on /login?mode=complete (Google profile completion)
+    if (isCompleteMode) {
       return supabaseResponse
     }
-    // Fully authenticated — redirect to dashboard
+
+    // SPEC §12: All other authenticated users (confirmed email OR Google) → dashboard
+    // This applies to both /login and /signup
+    console.log('[AUTH DEBUG middleware] Confirmed user on auth page — redirecting to /dashboard', { pathname })
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 

@@ -76,6 +76,14 @@ function AnimatedBackground() {
 
 /* ── Success screen ── */
 function SuccessScreen() {
+  useEffect(() => {
+    // SPEC §13: After password reset success, redirect to /login
+    const timer = setTimeout(() => {
+      window.location.href = '/login'
+    }, 3000)
+    return () => clearTimeout(timer)
+  }, [])
+
   return (
     <div className="relative min-h-screen w-full flex flex-col items-center justify-center px-4">
       <AnimatedBackground />
@@ -96,21 +104,21 @@ function SuccessScreen() {
         </div>
 
         <div>
-          <h2 className="text-2xl font-extrabold text-white leading-tight">Password Reset<br />Successful</h2>
+          <h2 className="text-2xl font-extrabold text-white leading-tight">Password Updated<br />Successfully</h2>
           <p className="text-sm text-white/50 mt-2 leading-relaxed">
-            Your password has been updated. You can now<br />sign in with your new credentials.
+            Your password has been updated. You&apos;ll be<br />redirected to sign in shortly.
           </p>
         </div>
 
         <Link
-          href="/dashboard"
+          href="/login"
           className="w-full py-3 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 transition-all hover:opacity-90 active:scale-[0.98]"
           style={{ background: 'linear-gradient(90deg, #7c3aed, #2563eb)' }}
         >
-          Go to Dashboard <ArrowRight size={16} />
+          Sign In Now <ArrowRight size={16} />
         </Link>
 
-        <p className="text-[11px] text-white/25">Secured by ForgeGuard Protocol</p>
+        <p className="text-[11px] text-white/25">Redirecting to login automatically...</p>
       </div>
 
       <div className="relative z-10 mt-8 flex items-center gap-4 text-xs text-white/30">

@@ -444,13 +444,7 @@ export const AuthComponent = ({ logo = <DefaultLogo />, brandName = "PostForge A
                   </GlassButton>
                 </div>
 
-                {isVerified && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="pt-4 text-center">
-                    <p className="text-xl font-bold text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.3)]">
-                      Verification successful!<br/>You can now login.
-                    </p>
-                  </motion.div>
-                )}
+
               </motion.form>
             }
 
@@ -641,13 +635,7 @@ export const AuthComponent = ({ logo = <DefaultLogo />, brandName = "PostForge A
                   </GlassButton>
                 </div>
 
-                {isVerified && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="pt-4 text-center">
-                    <p className="text-xl font-bold text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.3)]">
-                      Verification successful!<br/>You can now login.
-                    </p>
-                  </motion.div>
-                )}
+
               </motion.form>
             }
           </AnimatePresence>
