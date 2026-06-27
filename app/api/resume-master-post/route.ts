@@ -60,11 +60,11 @@ ${typeof resumeContext === 'string' ? resumeContext : JSON.stringify(resumeConte
     const t1 = Date.now();
     console.log(`[Master Post API] Prompt setup took ${t1 - t0}ms. Starting parallel generation for Parts 1, 2, and 3...`);
     
-    // Run all 3 parts in parallel — each capped at 1200 tokens for fast completion
+    // Run all 3 parts in parallel
     const [part1, part2, part3] = await Promise.all([
-      generateAIContent('resume-master-post', promptPart1, systemInstruction, undefined, 1200),
-      generateAIContent('resume-master-post', promptPart2, systemInstruction, undefined, 1200),
-      generateAIContent('resume-master-post', promptPart3, systemInstruction, undefined, 1200),
+      generateAIContent('resume-master-post', promptPart1, systemInstruction),
+      generateAIContent('resume-master-post', promptPart2, systemInstruction),
+      generateAIContent('resume-master-post', promptPart3, systemInstruction),
     ]);
     
     const t2 = Date.now();

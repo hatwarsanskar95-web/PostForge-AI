@@ -117,8 +117,6 @@ ANTI-HALLUCINATION RULES:
       'resume-analyzer',
       userPrompt,
       systemInstruction,
-      undefined,
-      1500, // Cap JSON output — resume analysis is bounded
     );
 
     let result;
@@ -138,7 +136,7 @@ ANTI-HALLUCINATION RULES:
   } catch (error: any) {
     console.error('Resume Analyzer API Error:', error);
     return NextResponse.json(
-      { error: 'Unable to process the uploaded file. Please try again.' },
+      { error: 'We couldn\'t analyze the resume. Please try again.' },
       { status: 500 }
     );
   }

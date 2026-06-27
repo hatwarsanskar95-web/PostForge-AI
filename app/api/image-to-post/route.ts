@@ -72,7 +72,6 @@ Additional context from the user: ${context}`;
       userPrompt,
       systemInstruction,
       base64Image,
-      800, // Image posts are concise — cap for faster completion
     );
 
     if (!generatedPost || generatedPost.trim().length === 0) {

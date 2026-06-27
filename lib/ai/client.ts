@@ -39,7 +39,6 @@ async function executeGeneration(
   prompt: string,
   systemInstruction?: string,
   base64Image?: string,
-  maxTokens?: number,
 ) {
   const messages: any[] = [];
   if (systemInstruction) {
@@ -66,8 +65,6 @@ async function executeGeneration(
     model: model,
     messages: messages,
     stream: true,
-    temperature: 0.7, // Explicit temperature avoids API default resolution overhead
-    ...(maxTokens ? { max_tokens: maxTokens } : {}),
   });
 
   let fullResponse = '';
@@ -92,7 +89,6 @@ async function executeGeneration(
   console.log(`Completion Tokens: ~${estimatedCompletionTokens}`);
   console.log(`First Token Time:  ${firstTokenTime}ms`);
   console.log(`Total Time:        ${totalTime}ms`);
-  if (maxTokens) console.log(`Max Tokens Cap:    ${maxTokens}`);
   console.log(`======================================\n`);
 
   return fullResponse;
@@ -105,7 +101,6 @@ async function executeGeneration(
  * @param prompt The main prompt/input for the AI
  * @param systemInstruction Optional system instructions to guide the model's behavior
  * @param base64Image Optional base64 encoded image for vision capabilities
- * @param maxTokens Optional max token cap to improve latency for bounded outputs
  * @returns The generated text response
  */
 export async function generateAIContent(
@@ -113,7 +108,6 @@ export async function generateAIContent(
   prompt: string,
   systemInstruction?: string,
   base64Image?: string,
-  maxTokens?: number,
 ) {
   if (!AI_CONFIG.BLUESMIND_API_KEY || AI_CONFIG.BLUESMIND_API_KEY === 'PASTE_MY_BLUESMIND_API_KEY_HERE') {
     throw new Error('BLUESMIND_API_KEY is not configured properly in .env.local.');
@@ -122,7 +116,7 @@ export async function generateAIContent(
   const primaryModel = getModelForFeature(feature);
 
   try {
-    return await executeGeneration(primaryModel, prompt, systemInstruction, base64Image, maxTokens);
+    return await executeGeneration(primaryModel, prompt, systemInstruction, base64Image);
   } catch (error: any) {
     console.warn(`[AI Client Router] Generation Error with primary model ${primaryModel}:`, error.message);
     
@@ -130,7 +124,7 @@ export async function generateAIContent(
     if (isGPT5) {
       console.log(`[AI Client Router] Initiating automatic fallback to kimi-k2.5 for feature ${feature}...`);
       try {
-        return await executeGeneration('kimi-k2.5', prompt, systemInstruction, base64Image, maxTokens);
+        return await executeGeneration('kimi-k2.5', prompt, systemInstruction, base64Image);
       } catch (fallbackError: any) {
         console.error(`[AI Client Router] Fallback generation also failed:`, fallbackError.message);
         throw createErrorResponse(fallbackError);
@@ -144,15 +138,15 @@ export async function generateAIContent(
 function createErrorResponse(error: any) {
   let errorMessage = error.message || 'Unknown AI generation error';
   
-  if (errorMessage.includes('504') || errorMessage.includes('Time-out') || errorMessage.includes('Gateway Time-out')) {
-    errorMessage = 'We couldn\'t process the AI response. Please regenerate.';
-  } else if (errorMessage.includes('502') || errorMessage.includes('Bad Gateway')) {
-    errorMessage = 'We couldn\'t process the AI response. Please regenerate.';
-  } else if (
+  if (
+    errorMessage.includes('504') ||
+    errorMessage.includes('Time-out') ||
+    errorMessage.includes('Gateway Time-out') ||
+    errorMessage.includes('502') ||
+    errorMessage.includes('Bad Gateway') ||
     errorMessage.includes('upstream error') ||
     errorMessage.includes('do request failed') ||
     errorMessage.includes('request failed') ||
-    errorMessage.includes('500') ||
     errorMessage.includes('upstream') ||
     errorMessage.includes('ECONNREFUSED') ||
     errorMessage.includes('ECONNRESET') ||

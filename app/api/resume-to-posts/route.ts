@@ -50,8 +50,6 @@ Make sure it sounds authentic and leverages the specific details from the resume
       'resume-to-posts',
       userPrompt,
       systemInstruction,
-      undefined,
-      600, // Post is "under 150 words" — cap at 600 tokens for fast completion
     );
 
     if (!generatedPost || generatedPost.trim().length === 0) {
