@@ -15,32 +15,55 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PostForge AI",
-  description: "AI-powered LinkedIn content generator for professionals, students, creators and job seekers.",
+  title: "PostForge AI – AI LinkedIn Post Generator for Students, Professionals & Creators",
+  description: "Generate professional LinkedIn posts, achievement posts, case studies, resume-based content, image-based content, and improve existing posts instantly using AI.",
   keywords: [
-    "LinkedIn",
-    "AI content generation",
-    "personal branding",
-    "content creation",
-    "LinkedIn posts",
-    "professional networking"
+    "linkedin post generator",
+    "ai linkedin post generator",
+    "linkedin content creator",
+    "linkedin post writer",
+    "resume to linkedin post",
+    "achievement post generator",
+    "ai content generator",
+    "image to linkedin post",
+    "content improver",
+    "postforge ai",
+    "linkedin ai tool",
+    "professional linkedin content",
+    "linkedin post maker",
+    "ai writing tool",
+    "personal branding tool",
+    "linkedin content for students",
+    "linkedin content for professionals",
+    "linkedin post from resume",
+    "case study generator",
+    "ai social media content"
   ],
   metadataBase: new URL("https://postforgeai.in"),
   alternates: {
     canonical: "/",
   },
   openGraph: {
-    title: "PostForge AI",
-    description: "AI-powered LinkedIn content generator for professionals, students, creators and job seekers.",
+    title: "PostForge AI – AI LinkedIn Post Generator for Students, Professionals & Creators",
+    description: "Generate professional LinkedIn posts, achievement posts, case studies, resume-based content, image-based content, and improve existing posts instantly using AI.",
     url: "https://postforgeai.in",
     siteName: "PostForge AI",
     locale: "en_US",
     type: "website",
+    images: [
+      {
+        url: "https://postforgeai.in/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "PostForge AI – AI LinkedIn Post Generator",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "PostForge AI",
-    description: "AI-powered LinkedIn content generator for professionals, students, creators and job seekers.",
+    title: "PostForge AI – AI LinkedIn Post Generator for Students, Professionals & Creators",
+    description: "Generate professional LinkedIn posts, achievement posts, case studies, resume-based content, image-based content, and improve existing posts instantly using AI.",
+    images: ["https://postforgeai.in/og-image.png"],
   },
   robots: {
     index: true,
@@ -54,7 +77,13 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/favicon.png", type: "image/png" },
+      { url: "/logo.svg", type: "image/svg+xml" },
+    ],
+    apple: "/favicon.png",
+    shortcut: "/favicon.ico",
   },
 };
 
@@ -66,7 +95,7 @@ const jsonLd = {
       "@id": "https://postforgeai.in/#organization",
       "name": "PostForge AI",
       "url": "https://postforgeai.in",
-      "logo": "https://postforgeai.in/favicon.ico",
+      "logo": "https://postforgeai.in/logo.png",
       "sameAs": []
     },
     {
@@ -84,7 +113,7 @@ const jsonLd = {
       "applicationCategory": "BusinessApplication",
       "operatingSystem": "All",
       "url": "https://postforgeai.in",
-      "description": "AI-powered LinkedIn content generator for professionals, students, creators and job seekers.",
+      "description": "Generate professional LinkedIn posts, achievement posts, case studies, resume-based content, image-based content, and improve existing posts instantly using AI.",
       "offers": {
         "@type": "Offer",
         "price": "0",
