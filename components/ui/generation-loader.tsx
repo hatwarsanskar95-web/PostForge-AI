@@ -71,7 +71,7 @@ export function GenerationLoader({ hideDescription = false }: { hideDescription?
         
         {!hideDescription && (
           <p className="text-[13px] text-gray-500 text-center max-w-[280px]">
-            Our AI engine is currently processing your request. This usually takes around 15-20 seconds.
+            Our AI engine is currently processing your request. This may take 1-2 minutes.
           </p>
         )}
       </div>

@@ -32,9 +32,15 @@ function getModelForFeature(feature: AIFeature): string {
 }
 
 /**
- * Executes the AI generation request.
+ * Executes the AI generation request with streaming to bypass NGINX idle timeout.
  */
-async function executeGeneration(model: string, prompt: string, systemInstruction?: string, base64Image?: string) {
+async function executeGeneration(
+  model: string,
+  prompt: string,
+  systemInstruction?: string,
+  base64Image?: string,
+  maxTokens?: number,
+) {
   const messages: any[] = [];
   if (systemInstruction) {
     messages.push({ role: 'system', content: systemInstruction });
@@ -55,10 +61,13 @@ async function executeGeneration(model: string, prompt: string, systemInstructio
   const startTime = Date.now();
 
   // Use streaming internally to bypass the 60-second NGINX idle timeout (504 Gateway Timeout).
+  // Note: stream: true must be in the literal call for TypeScript to narrow the return type correctly.
   const stream = await aiClient.chat.completions.create({
     model: model,
     messages: messages,
     stream: true,
+    temperature: 0.7, // Explicit temperature avoids API default resolution overhead
+    ...(maxTokens ? { max_tokens: maxTokens } : {}),
   });
 
   let fullResponse = '';
@@ -72,7 +81,7 @@ async function executeGeneration(model: string, prompt: string, systemInstructio
   const totalTime = Date.now() - startTime;
   
   // Estimate tokens
-  const promptLength = messages.reduce((acc, m) => acc + (m.content?.length || 0), 0);
+  const promptLength = messages.reduce((acc, m) => acc + (typeof m.content === 'string' ? m.content.length : JSON.stringify(m.content).length), 0);
   const estimatedPromptTokens = Math.ceil(promptLength / 4);
   const estimatedCompletionTokens = Math.ceil(fullResponse.length / 4);
 
@@ -83,6 +92,7 @@ async function executeGeneration(model: string, prompt: string, systemInstructio
   console.log(`Completion Tokens: ~${estimatedCompletionTokens}`);
   console.log(`First Token Time:  ${firstTokenTime}ms`);
   console.log(`Total Time:        ${totalTime}ms`);
+  if (maxTokens) console.log(`Max Tokens Cap:    ${maxTokens}`);
   console.log(`======================================\n`);
 
   return fullResponse;
@@ -95,9 +105,16 @@ async function executeGeneration(model: string, prompt: string, systemInstructio
  * @param prompt The main prompt/input for the AI
  * @param systemInstruction Optional system instructions to guide the model's behavior
  * @param base64Image Optional base64 encoded image for vision capabilities
+ * @param maxTokens Optional max token cap to improve latency for bounded outputs
  * @returns The generated text response
  */
-export async function generateAIContent(feature: AIFeature, prompt: string, systemInstruction?: string, base64Image?: string) {
+export async function generateAIContent(
+  feature: AIFeature,
+  prompt: string,
+  systemInstruction?: string,
+  base64Image?: string,
+  maxTokens?: number,
+) {
   if (!AI_CONFIG.BLUESMIND_API_KEY || AI_CONFIG.BLUESMIND_API_KEY === 'PASTE_MY_BLUESMIND_API_KEY_HERE') {
     throw new Error('BLUESMIND_API_KEY is not configured properly in .env.local.');
   }
@@ -105,7 +122,7 @@ export async function generateAIContent(feature: AIFeature, prompt: string, syst
   const primaryModel = getModelForFeature(feature);
 
   try {
-    return await executeGeneration(primaryModel, prompt, systemInstruction, base64Image);
+    return await executeGeneration(primaryModel, prompt, systemInstruction, base64Image, maxTokens);
   } catch (error: any) {
     console.warn(`[AI Client Router] Generation Error with primary model ${primaryModel}:`, error.message);
     
@@ -113,7 +130,7 @@ export async function generateAIContent(feature: AIFeature, prompt: string, syst
     if (isGPT5) {
       console.log(`[AI Client Router] Initiating automatic fallback to kimi-k2.5 for feature ${feature}...`);
       try {
-        return await executeGeneration('kimi-k2.5', prompt, systemInstruction, base64Image);
+        return await executeGeneration('kimi-k2.5', prompt, systemInstruction, base64Image, maxTokens);
       } catch (fallbackError: any) {
         console.error(`[AI Client Router] Fallback generation also failed:`, fallbackError.message);
         throw createErrorResponse(fallbackError);
@@ -128,9 +145,21 @@ function createErrorResponse(error: any) {
   let errorMessage = error.message || 'Unknown AI generation error';
   
   if (errorMessage.includes('504') || errorMessage.includes('Time-out') || errorMessage.includes('Gateway Time-out')) {
-    errorMessage = 'The AI provider took too long to respond (Timeout). This usually happens when the generated text is too long. Please try again.';
+    errorMessage = 'We couldn\'t process the AI response. Please regenerate.';
   } else if (errorMessage.includes('502') || errorMessage.includes('Bad Gateway')) {
-    errorMessage = 'The AI provider is currently unreachable (Bad Gateway). Please try again.';
+    errorMessage = 'We couldn\'t process the AI response. Please regenerate.';
+  } else if (
+    errorMessage.includes('upstream error') ||
+    errorMessage.includes('do request failed') ||
+    errorMessage.includes('request failed') ||
+    errorMessage.includes('500') ||
+    errorMessage.includes('upstream') ||
+    errorMessage.includes('ECONNREFUSED') ||
+    errorMessage.includes('ECONNRESET') ||
+    errorMessage.includes('ETIMEDOUT') ||
+    errorMessage.includes('fetch failed')
+  ) {
+    errorMessage = 'We couldn\'t process the AI response. Please regenerate.';
   }
 
   return new Error(errorMessage);

@@ -21,6 +21,7 @@ export default function ImageToPostPage() {
   const [saved, setSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showSavedPopup, setShowSavedPopup] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { verifyCredits } = useCreditCheck();
   const { deductCredit } = useUsage();
 
@@ -40,6 +41,7 @@ export default function ImageToPostPage() {
     setIsGenerating(true);
     setSaved(false);
     setGeneratedPost("");
+    setErrorMessage(null);
 
     try {
       const formData = new FormData();
@@ -69,7 +71,7 @@ export default function ImageToPostPage() {
       ]);
     } catch (error: any) {
       console.error(error);
-      alert(error.message || "Something went wrong.");
+      setErrorMessage(error.message || "We couldn't process the AI response. Please regenerate.");
       setIsGenerating(false);
     }
   };
@@ -156,7 +158,7 @@ export default function ImageToPostPage() {
                       <FileUp size={20} className="text-gray-300" />
                     </div>
                     <span className="text-[14px] font-medium text-white mb-1">Click or drag image to upload</span>
-                    <span className="text-[13px] text-gray-500">PNG, JPG or WebP up to 10MB</span>
+                    <span className="text-[13px] text-gray-500">PNG, JPG or WebP up to 50MB</span>
                   </div>
                 )}
               </div>
@@ -221,6 +223,13 @@ export default function ImageToPostPage() {
              <div className="flex-1 flex flex-col relative overflow-hidden mb-8">
                {isGenerating ? (
                  <GenerationLoader hideDescription={true} />
+               ) : errorMessage ? (
+                 <div className="flex flex-col items-center justify-center w-full h-full mt-4">
+                   <div className="w-full p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-start justify-between gap-3">
+                     <p className="text-[13px] text-red-400 leading-relaxed">{errorMessage}</p>
+                     <button onClick={() => setErrorMessage(null)} className="text-red-400/50 hover:text-red-400 transition-colors shrink-0 mt-0.5 text-lg leading-none">&times;</button>
+                   </div>
+                 </div>
                ) : generatedPost ? (
                  <div className="w-full h-full text-gray-300 whitespace-pre-wrap overflow-y-auto leading-relaxed z-10 custom-scrollbar text-[14px]">
                    {generatedPost}

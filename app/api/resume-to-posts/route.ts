@@ -46,14 +46,27 @@ ${typeof resumeContext === 'string' ? resumeContext : JSON.stringify(resumeConte
 
 Make sure it sounds authentic and leverages the specific details from the resume context where relevant.`;
 
-    const generatedPost = await generateAIContent('resume-to-posts', userPrompt, systemInstruction);
+    const generatedPost = await generateAIContent(
+      'resume-to-posts',
+      userPrompt,
+      systemInstruction,
+      undefined,
+      600, // Post is "under 150 words" — cap at 600 tokens for fast completion
+    );
+
+    if (!generatedPost || generatedPost.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'We couldn\'t generate the post. Please try again.' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ post: generatedPost });
 
   } catch (error: any) {
     console.error('Resume To Posts Generator API Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to generate post' },
+      { error: 'We couldn\'t process the AI response. Please regenerate.' },
       { status: 500 }
     );
   }

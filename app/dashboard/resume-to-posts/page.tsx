@@ -42,6 +42,7 @@ function ResumeToPostsContent() {
   const [saving, setSaving] = useState(false);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [showMasterModal, setShowMasterModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const { verifyCredits } = useCreditCheck();
   const { stats, deductCredit } = useUsage();
@@ -86,13 +87,13 @@ function ResumeToPostsContent() {
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to analyze resume");
+      if (!res.ok) throw new Error(data.error || "Unable to process the uploaded file. Please try again.");
 
       setAnalysisData(data.data);
       // Save analysis to history silently
       saveToHistory("resume_analysis", JSON.stringify(data.data, null, 2)).catch(console.error);
     } catch (err: any) {
-      alert(err.message || "An error occurred during analysis.");
+      setErrorMessage(err.message || "Unable to process the uploaded file. Please try again.");
     } finally {
       setIsAnalyzing(false);
     }
@@ -128,7 +129,7 @@ function ResumeToPostsContent() {
       const t2 = performance.now();
       console.log(`[Profiler] JSON parse took ${Math.round(t2 - t1)}ms`);
 
-      if (!res.ok) throw new Error(data.error || "Failed to generate post");
+      if (!res.ok) throw new Error(data.error || "We couldn't process the AI response. Please regenerate.");
 
       setGeneratedPost(data.post);
       
@@ -141,7 +142,7 @@ function ResumeToPostsContent() {
       await consumeGenerationCredit();
       deductCredit();
     } catch (err: any) {
-      alert(err.message || "An error occurred during generation.");
+      setErrorMessage(err.message || "We couldn't process the AI response. Please regenerate.");
     } finally {
       setIsGenerating(false);
     }
@@ -181,7 +182,7 @@ function ResumeToPostsContent() {
       const t2 = performance.now();
       console.log(`[Profiler] JSON parse took ${Math.round(t2 - t1)}ms`);
 
-      if (!res.ok) throw new Error(data.error || "Failed to generate master post");
+      if (!res.ok) throw new Error(data.error || "We couldn't generate the master post. Please try again.");
 
       setGeneratedPost(data.post);
 
@@ -195,7 +196,7 @@ function ResumeToPostsContent() {
       // deductCredit only subtracts 1 from local context by default, so we call it 5 times to sync local state immediately
       for(let i=0; i<5; i++) deductCredit();
     } catch (err: any) {
-      alert(err.message || "An error occurred during generation.");
+      setErrorMessage(err.message || "We couldn't generate the master post. Please try again.");
     } finally {
       setIsGenerating(false);
     }
@@ -266,7 +267,7 @@ function ResumeToPostsContent() {
               </div>
 
               <div className="relative border border-dashed border-white/[0.1] hover:border-white/[0.2] rounded-xl hover:bg-white/[0.02] transition-all p-8 flex flex-col items-center justify-center cursor-pointer min-h-[160px] mb-6">
-                <input type="file" accept=".pdf,.docx,.txt" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                <input type="file" accept=".pdf,.doc,.docx,.txt" onChange={handleFileChange} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                 {file ? (
                   <div className="flex flex-col items-center gap-2">
                     <div className="w-12 h-12 rounded-full bg-violet-500/10 flex items-center justify-center mb-2">
@@ -280,11 +281,17 @@ function ResumeToPostsContent() {
                     <div className="w-12 h-12 rounded-2xl bg-white/[0.05] flex items-center justify-center mb-3">
                       <Cloud size={20} className="text-gray-300" />
                     </div>
-                    <span className="text-[13px] text-white font-medium">Upload PDF, DOCX, or TXT</span>
+                    <span className="text-[13px] text-white font-medium">Upload PDF, DOC, DOCX, or TXT</span>
                   </>
                 )}
               </div>
 
+              {errorMessage && (
+                <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 flex items-start justify-between gap-3">
+                  <p className="text-[13px] text-red-400 leading-relaxed">{errorMessage}</p>
+                  <button onClick={() => setErrorMessage(null)} className="text-red-400/50 hover:text-red-400 transition-colors shrink-0 mt-0.5 text-lg leading-none">&times;</button>
+                </div>
+              )}
               <button 
                 onClick={handleAnalyze} disabled={!file || isAnalyzing}
                 className="w-full py-3.5 rounded-lg bg-[#a855f7] hover:bg-[#9333ea] text-white font-semibold flex items-center justify-center gap-2 transition-all disabled:opacity-50 text-[14px] shadow-[0_0_15px_rgba(168,85,247,0.15)]"
@@ -499,7 +506,7 @@ function ResumeToPostsContent() {
             <p className="text-gray-400 text-[14px] leading-relaxed mb-6">
               This will consume <strong className="text-white">5 credits</strong> and generate a highly detailed, 600-1200 word personal brand post using your complete resume data. 
               <br/><br/>
-              <span className="text-orange-400/80">Note: Because this is a massive flagship post, generation may take up to 60 seconds.</span>
+              <span className="text-orange-400/80">Note: Because this is a massive flagship post, generation may take 1-2 minutes.</span>
             </p>
             <div className="flex items-center justify-end gap-3">
               <button 

@@ -18,14 +18,14 @@ export async function POST(req: Request) {
 
     if (!validMimeTypes.includes(mimeType)) {
       return NextResponse.json(
-        { error: 'Unsupported image type. Please upload a PNG, JPG, or WEBP.' },
+        { error: 'Unsupported image format. Please upload a JPG, JPEG, PNG, or WEBP image.' },
         { status: 400 }
       );
     }
 
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > 50 * 1024 * 1024) {
       return NextResponse.json(
-        { error: 'Image size must be less than 10MB.' },
+        { error: 'Image size must be less than 50MB.' },
         { status: 400 }
       );
     }
@@ -67,17 +67,26 @@ Generate ONLY the final LinkedIn post text exactly as it should be pasted into L
     const userPrompt = `Please generate a premium LinkedIn post based on the attached image.
 Additional context from the user: ${context}`;
 
-    const generatedPost = await generateAIContent('image-to-post', userPrompt, systemInstruction, base64Image);
+    const generatedPost = await generateAIContent(
+      'image-to-post',
+      userPrompt,
+      systemInstruction,
+      base64Image,
+      800, // Image posts are concise — cap for faster completion
+    );
 
-    if (!generatedPost) {
-        throw new Error("AI returned empty response");
+    if (!generatedPost || generatedPost.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'We couldn\'t generate a post from this image. Please try again.' },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ post: generatedPost.trim() });
   } catch (error: any) {
     console.error('[API Image To Post] Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to generate post.' },
+      { error: 'We couldn\'t process the AI response. Please regenerate.' },
       { status: 500 }
     );
   }
