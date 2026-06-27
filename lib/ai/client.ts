@@ -57,6 +57,7 @@ async function executeGeneration(
     messages.push({ role: 'user', content: prompt });
   }
 
+  console.log(`[AI-CLIENT] Sending request to model=${model}, hasImage=${!!base64Image}, messagesCount=${messages.length}`);
   const startTime = Date.now();
 
   // Use streaming internally to bypass the 60-second NGINX idle timeout (504 Gateway Timeout).
@@ -66,6 +67,7 @@ async function executeGeneration(
     messages: messages,
     stream: true,
   });
+  console.log(`[AI-CLIENT] Stream opened successfully (${Date.now() - startTime}ms)`);
 
   let fullResponse = '';
   let firstTokenTime = null;
@@ -118,7 +120,14 @@ export async function generateAIContent(
   try {
     return await executeGeneration(primaryModel, prompt, systemInstruction, base64Image);
   } catch (error: any) {
-    console.warn(`[AI Client Router] Generation Error with primary model ${primaryModel}:`, error.message);
+    console.error(`[AI-CLIENT] PRIMARY MODEL FAILED (${primaryModel}):`);
+    console.error(`[AI-CLIENT]   message: ${error.message}`);
+    console.error(`[AI-CLIENT]   status:  ${error.status ?? 'N/A'}`);
+    console.error(`[AI-CLIENT]   code:    ${error.code ?? 'N/A'}`);
+    if (error.response) {
+      console.error(`[AI-CLIENT]   response status: ${error.response.status}`);
+      try { console.error(`[AI-CLIENT]   response body:   ${JSON.stringify(await error.response.json())}`); } catch {}
+    }
     
     const isGPT5 = primaryModel.includes('gpt-5');
     if (isGPT5) {

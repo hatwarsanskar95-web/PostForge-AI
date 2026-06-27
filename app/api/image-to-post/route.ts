@@ -4,10 +4,13 @@ import { generateAIContent } from '@/lib/ai/client';
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
+  console.log('\n[IMAGE-TO-POST] ===== NEW REQUEST =====');
   try {
     const formData = await req.formData();
     const file = formData.get('image') as File | null;
     const context = formData.get('context') as string || 'Not provided';
+
+    console.log(`[IMAGE-TO-POST] Step 1 - File: ${file ? `name=${file.name}, size=${file.size}, type=${file.type}` : 'NULL'}`);
 
     if (!file) {
       return NextResponse.json({ error: 'No image uploaded.' }, { status: 400 });
@@ -17,6 +20,7 @@ export async function POST(req: Request) {
     const validMimeTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 
     if (!validMimeTypes.includes(mimeType)) {
+      console.log(`[IMAGE-TO-POST] Step 2 FAIL - Invalid MIME: ${mimeType}`);
       return NextResponse.json(
         { error: 'Unsupported image format. Please upload a JPG, JPEG, PNG, or WEBP image.' },
         { status: 400 }
@@ -24,14 +28,17 @@ export async function POST(req: Request) {
     }
 
     if (file.size > 50 * 1024 * 1024) {
+      console.log(`[IMAGE-TO-POST] Step 2 FAIL - File too large: ${file.size} bytes`);
       return NextResponse.json(
         { error: 'Image size must be less than 50MB.' },
         { status: 400 }
       );
     }
 
+    console.log(`[IMAGE-TO-POST] Step 2 - Validation passed. Reading buffer...`);
     const buffer = Buffer.from(await file.arrayBuffer());
     const base64Image = `data:${mimeType};base64,${buffer.toString('base64')}`;
+    console.log(`[IMAGE-TO-POST] Step 3 - Buffer OK. Base64 length: ${base64Image.length} chars (~${Math.round(base64Image.length / 1024)}KB)`);
 
     const systemInstruction = `You are a world-class LinkedIn personal branding expert and storytelling strategist.
 Task: Analyze the provided professional image and transform it into a premium, engaging LinkedIn post.
@@ -67,23 +74,35 @@ Generate ONLY the final LinkedIn post text exactly as it should be pasted into L
     const userPrompt = `Please generate a premium LinkedIn post based on the attached image.
 Additional context from the user: ${context}`;
 
-    const generatedPost = await generateAIContent(
-      'image-to-post',
-      userPrompt,
-      systemInstruction,
-      base64Image,
-    );
+    console.log(`[IMAGE-TO-POST] Step 4 - Calling AI API...`);
+
+    let generatedPost: string;
+    try {
+      generatedPost = await generateAIContent('image-to-post', userPrompt, systemInstruction, base64Image);
+      console.log(`[IMAGE-TO-POST] Step 5 - AI responded. Length: ${generatedPost?.length ?? 0}`);
+      console.log(`[IMAGE-TO-POST] Step 5 - RAW RESPONSE (first 300): ${(generatedPost ?? '').substring(0, 300)}`);
+    } catch (aiError: any) {
+      console.error(`[IMAGE-TO-POST] Step 5 FAIL - AI threw error: "${aiError.message}"`);
+      console.error(`[IMAGE-TO-POST] Full AI error stack:`, aiError);
+      return NextResponse.json(
+        { error: 'We couldn\'t process the AI response. Please regenerate.' },
+        { status: 500 }
+      );
+    }
 
     if (!generatedPost || generatedPost.trim().length === 0) {
+      console.error(`[IMAGE-TO-POST] Step 6 FAIL - Empty response`);
       return NextResponse.json(
         { error: 'We couldn\'t generate a post from this image. Please try again.' },
         { status: 500 }
       );
     }
 
+    console.log(`[IMAGE-TO-POST] Step 6 - SUCCESS. Returning post.`);
     return NextResponse.json({ post: generatedPost.trim() });
   } catch (error: any) {
-    console.error('[API Image To Post] Error:', error);
+    console.error('[IMAGE-TO-POST] UNCAUGHT ERROR:', error.message);
+    console.error('[IMAGE-TO-POST] Full error:', error);
     return NextResponse.json(
       { error: 'We couldn\'t process the AI response. Please regenerate.' },
       { status: 500 }
