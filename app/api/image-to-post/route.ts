@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { generateAIContent } from '@/lib/ai/client';
 import sharp from 'sharp';
-import { BASE_FORMATTING_RULES, ANTI_HALLUCINATION } from '@/lib/ai/prompts';
+import { BASE_FORMATTING_RULES, ANTI_HALLUCINATION, LENGTH_RULES } from '@/lib/ai/prompts';
 
 export const maxDuration = 60;
 
@@ -71,6 +71,8 @@ CATEGORY-SPECIFIC GUIDELINES:
 
 ${ANTI_HALLUCINATION}
 * If the user context is empty, focus heavily on the visual evidence.
+
+${LENGTH_RULES.IMAGE}
 
 ${BASE_FORMATTING_RULES}`;
 

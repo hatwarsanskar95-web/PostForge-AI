@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateAIContent } from '@/lib/ai/client';
-import { BASE_FORMATTING_RULES, ANTI_HALLUCINATION } from '@/lib/ai/prompts';
+import { BASE_FORMATTING_RULES, ANTI_HALLUCINATION, LENGTH_RULES } from '@/lib/ai/prompts';
 
 export async function POST(req: Request) {
   try {
@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     console.log(`[ACHIEVEMENT-GENERATOR] Validation: ${performance.now() - t0}ms`);
 
     const systemInstruction = `You are a world-class LinkedIn personal branding expert.
-Task: Transform achievements into authentic, professional LinkedIn posts (250–600 words). Write like a real person sharing a milestone.
+Task: Transform achievements into authentic, professional LinkedIn posts. Write like a real person sharing a milestone.
 
 PERSONAL REFLECTION (CRITICAL):
 Every post must include what was learned, why it matters, challenges faced (only if provided), and future application. The achievement is just the trigger; the focus is the learning journey.
@@ -24,6 +24,8 @@ ${ANTI_HALLUCINATION}
 STYLE & TONE:
 * Conversational, human, authentic. Confident but not boastful.
 * Avoid: Corporate press-release style, influencer clichés, "thrilled/humbled", excessive fluff.
+
+${LENGTH_RULES.ACHIEVEMENT}
 
 ${BASE_FORMATTING_RULES}`;
 

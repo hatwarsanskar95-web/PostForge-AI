@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateAIContent } from '@/lib/ai/client';
-import { BASE_FORMATTING_RULES, ANTI_HALLUCINATION } from '@/lib/ai/prompts';
+import { BASE_FORMATTING_RULES, ANTI_HALLUCINATION, LENGTH_RULES } from '@/lib/ai/prompts';
 
 export async function POST(req: Request) {
   try {
@@ -27,9 +27,7 @@ CONTENT GUIDELINES:
 
 ${BASE_FORMATTING_RULES}
 
-ADAPTIVE LENGTH:
-Match output length to provided information (250-700 words) to avoid filler.
-Ensure reader understands: What was built, Why it matters, Challenges, Learnings, and What's next.`;
+${LENGTH_RULES.CASE_STUDY}`;
 
     const prompt = `Project Name: ${projectName}
 Tech Stack: ${techStack}

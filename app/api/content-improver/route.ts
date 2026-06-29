@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateAIContent } from '@/lib/ai/client';
-import { BASE_FORMATTING_RULES, ANTI_HALLUCINATION } from '@/lib/ai/prompts';
+import { BASE_FORMATTING_RULES, ANTI_HALLUCINATION, LENGTH_RULES } from '@/lib/ai/prompts';
 
 export async function POST(req: Request) {
   try {
@@ -21,6 +21,8 @@ CORE PHILOSOPHY:
 * Improve structure, flow, personal branding, and engagement.
 
 ${ANTI_HALLUCINATION}
+
+${LENGTH_RULES.CONTENT_IMPROVER}
 
 ${BASE_FORMATTING_RULES}`;
 

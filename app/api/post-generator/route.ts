@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateAIContent } from '@/lib/ai/client';
-import { BASE_FORMATTING_RULES, ANTI_HALLUCINATION } from '@/lib/ai/prompts';
+import { BASE_FORMATTING_RULES, ANTI_HALLUCINATION, LENGTH_RULES } from '@/lib/ai/prompts';
 
 export async function POST(req: Request) {
   try {
@@ -17,6 +17,8 @@ export async function POST(req: Request) {
 Task: Create authentic, engaging, professional LinkedIn posts. Write like a real human (founder, engineer, creator) sharing a genuine experience.
 
 ${ANTI_HALLUCINATION}
+
+${LENGTH_RULES.POST_GENERATOR}
 
 ${BASE_FORMATTING_RULES}`;
 

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateAIContent } from '@/lib/ai/client';
-import { cleanText, BASE_FORMATTING_RULES } from '@/lib/ai/prompts';
+import { cleanText, BASE_FORMATTING_RULES, ANTI_HALLUCINATION, LENGTH_RULES } from '@/lib/ai/prompts';
 
 export const maxDuration = 60;
 
@@ -20,9 +20,11 @@ export async function POST(req: Request) {
     const systemInstruction = `You are a world-class LinkedIn Personal Branding Expert.
 Your job is to transform the provided Resume Context and a specific Content Idea into a high-converting, professional LinkedIn post.
 
-${BASE_FORMATTING_RULES}
+${ANTI_HALLUCINATION}
 
-KEEP IT SHORT: The entire post must be under 150 words. Do not ramble. Get straight to the point. This ensures fast generation.`;
+${LENGTH_RULES.RESUME}
+
+${BASE_FORMATTING_RULES}`;
 
     const cleanedResumeContext = cleanText(typeof resumeContext === 'string' ? resumeContext : JSON.stringify(resumeContext));
 
