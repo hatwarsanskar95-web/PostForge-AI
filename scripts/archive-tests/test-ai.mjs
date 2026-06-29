@@ -4,17 +4,17 @@ import dotenv from 'dotenv';
 // Load variables from .env.local
 dotenv.config({ path: '.env.local' });
 
-const apiKey = process.env.BLUESMIND_API_KEY;
-const baseURL = process.env.BLUESMIND_BASE_URL;
+const apiKey = process.env.OPENROUTER_API_KEY;
+const baseURL = process.env.OPENROUTER_BASE_URL;
 const model = process.env.AI_MODEL || 'gemini-3-flash-preview';
 
-console.log(`\n--- BLUESMIND CONNECTION TEST ---`);
+console.log(`\n--- OPENROUTER CONNECTION TEST ---`);
 console.log(`API Key Found: ${apiKey ? 'Yes (starts with ' + apiKey.substring(0, 5) + '...)' : 'No'}`);
 console.log(`Base URL: ${baseURL}`);
 console.log(`Model: ${model}\n`);
 
-if (!apiKey || apiKey === 'PASTE_MY_BLUESMIND_API_KEY_HERE') {
-  console.error("❌ Error: Valid BLUESMIND_API_KEY not found in .env.local");
+if (!apiKey || apiKey === 'PASTE_MY_OPENROUTER_API_KEY_HERE') {
+  console.error("❌ Error: Valid OPENROUTER_API_KEY not found in .env.local");
   process.exit(1);
 }
 

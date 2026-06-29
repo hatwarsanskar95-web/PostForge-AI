@@ -1,9 +1,9 @@
 import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
-const apiKey = process.env.BLUESMIND_API_KEY;
+const apiKey = process.env.OPENROUTER_API_KEY;
 const model = process.env.AI_MODEL || 'gemini-3-flash-preview';
-const baseUrl = 'https://api.bluesminds.com';
+const baseUrl = 'https://api.openrouter.ai/api';
 
 const payload = {
   model: model,

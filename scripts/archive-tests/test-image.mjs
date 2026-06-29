@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
-const apiKey = process.env.BLUESMIND_API_KEY;
-const baseUrl = 'https://api.bluesminds.com/v1/chat/completions';
+const apiKey = process.env.OPENROUTER_API_KEY;
+const baseUrl = 'https://api.openrouter.ai/api/v1/chat/completions';
 
 const base64Pixel = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
@@ -49,7 +49,7 @@ async function testImageInput(modelName) {
 }
 
 async function run() {
-  await testImageInput('gpt-5.5');
+  await testImageInput(process.env.IMAGE_MODEL || 'glm-4.6');
 }
 
 run();

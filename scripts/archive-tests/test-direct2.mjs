@@ -1,8 +1,8 @@
 import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
-// We must set process.env.BLUESMIND_API_KEY before importing client.ts
-process.env.BLUESMIND_API_KEY = process.env.BLUESMIND_API_KEY;
+// We must set process.env.OPENROUTER_API_KEY before importing client.ts
+process.env.OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 
 const { generateAIContent } = await import('./lib/ai/client.ts');
 

@@ -3,8 +3,8 @@ dotenv.config({ path: '.env.local' });
 import OpenAI from 'openai';
 
 const aiClient = new OpenAI({
-  apiKey: process.env.BLUESMIND_API_KEY,
-  baseURL: process.env.BLUESMIND_BASE_URL,
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: process.env.OPENROUTER_BASE_URL,
 });
 
 async function run() {
@@ -12,7 +12,7 @@ async function run() {
   const t0 = performance.now();
   
   const stream = await aiClient.chat.completions.create({
-    model: 'gpt-5.5',
+    model: process.env.AI_MODEL || 'glm-4.6',
     messages: [{ role: 'user', content: 'Write a 100 word essay about AI.' }],
     stream: true,
   });

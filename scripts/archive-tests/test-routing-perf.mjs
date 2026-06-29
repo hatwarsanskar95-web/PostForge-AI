@@ -28,7 +28,7 @@ async function testApi(endpoint, payload) {
 }
 
 async function run() {
-  console.log("Starting Performance Routing Test with GPT-5.5...");
+  console.log("Starting Performance Routing Test with glm-4.6...");
   
   // 1. Test post-generator
   await testApi('/post-generator', {

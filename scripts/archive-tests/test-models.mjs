@@ -1,73 +1,55 @@
-import dotenv from 'dotenv';
-dotenv.config({ path: '.env.local' });
+import https from 'https';
 
-const apiKey = process.env.BLUESMIND_API_KEY;
-const baseUrl = 'https://api.bluesminds.com/v1/chat/completions';
+const API_KEY = 'sk-xTGkJ6MtvME0QKXRSAkb3VubSNn8gWWka02NvxVwUfKyEsWa';
+const BASE_URL = 'api.openrouter.ai/api';
 
-const modelsToTest = [
-  // Google Models
-  'gemini-3-flash-preview',
-  'gemini-3.1-flash-lite-preview',
-  'gemini-3.1-pro-preview',
-  
-  // Non-Google Fallback Models
-  'gpt-4o-mini',
-  'gpt-3.5-turbo',
-  'deepseek-chat',
-  'qwen-turbo',
-  'qwen-plus'
-];
+const models = ['gpt-4o-mini', 'gpt-4o', 'DeepSeek-V4-Flash', 'glm-4.6', 'kimi-k2.5', 'gpt-5-mini', 'gpt-5-nano'];
 
-async function testModel(modelName) {
-  console.log(`\nTesting Model: ${modelName}`);
-  try {
-    const response = await fetch(baseUrl, {
+function testModel(model) {
+  return new Promise((resolve) => {
+    const body = JSON.stringify({
+      model,
+      messages: [{ role: 'user', content: 'Say OK' }]
+    });
+
+    const options = {
+      hostname: BASE_URL,
+      port: 443,
+      path: '/v1/chat/completions',
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'Authorization': `Bearer ${API_KEY}`,
+        'Content-Length': Buffer.byteLength(body)
       },
-      signal: AbortSignal.timeout(5000),
-      body: JSON.stringify({
-        model: modelName,
-        messages: [{ role: 'user', content: 'Reply with exactly: Connection Successful' }]
-      })
+      rejectUnauthorized: false,
+      timeout: 15000
+    };
+
+    const start = Date.now();
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => data += chunk);
+      res.on('end', () => {
+        const elapsed = Date.now() - start;
+        resolve({ model, status: res.statusCode, elapsed, body: data.substring(0, 300) });
+      });
     });
-    
-    const text = await response.text();
-    console.log(`Status: ${response.status} ${response.statusText}`);
-    
-    if (response.ok) {
-        try {
-            const json = JSON.parse(text);
-            console.log(`SUCCESS! Response: ${json.choices?.[0]?.message?.content}`);
-            return true;
-        } catch(e) {
-            console.log(`Failed to parse response:`, text);
-        }
-    } else {
-        try {
-            const json = JSON.parse(text);
-            console.log(`Error:`, json.error?.message || json.error || text);
-        } catch(e) {
-            console.log(`Error Response:`, text);
-        }
-    }
-    return false;
-  } catch (err) {
-    console.error(`Network Error:`, err.message);
-    return false;
-  }
+
+    req.on('error', (e) => resolve({ model, status: 'ERR', elapsed: Date.now() - start, body: e.message }));
+    req.on('timeout', () => { req.destroy(); resolve({ model, status: 'TIMEOUT', elapsed: 15000, body: 'timed out' }); });
+    req.write(body);
+    req.end();
+  });
 }
 
-async function run() {
-  for (const model of modelsToTest) {
-    const success = await testModel(model);
-    if (success) {
-      console.log(`\n\n✅ Found working model: ${model}. Stopping tests.`);
-      break;
-    }
+(async () => {
+  console.log('Testing OpenRouter models...\n');
+  for (const model of models) {
+    const result = await testModel(model);
+    const ok = result.status === 200 ? '✅ WORKS' : `❌ ${result.status}`;
+    console.log(`${ok} | ${result.model} | ${result.elapsed}ms`);
+    if (result.status !== 200) console.log(`   → ${result.body}\n`);
+    else console.log(`   → ${result.body.substring(0, 150)}\n`);
   }
-}
-
-run();
+})();

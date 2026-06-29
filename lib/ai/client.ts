@@ -1,10 +1,62 @@
 import OpenAI from 'openai';
 import { AI_CONFIG } from './config';
 
-// Initialize the OpenAI-compatible client for BluesMind
+// Initialize the OpenAI-compatible client for OpenRouter
 const aiClient = new OpenAI({
-  apiKey: AI_CONFIG.BLUESMIND_API_KEY,
-  baseURL: AI_CONFIG.BLUESMIND_BASE_URL,
+  get apiKey() { return AI_CONFIG.OPENROUTER_API_KEY; },
+  get baseURL() { return AI_CONFIG.OPENROUTER_BASE_URL; },
+  fetch: async (url, init) => {
+    if (!init) return fetch(url, init);
+    
+    // TASK 4: Log before EVERY OpenRouter request
+    const headers = { ...(init.headers as Record<string, string>) };
+    if (headers['Authorization']) {
+      headers['Authorization'] = 'Bearer [HIDDEN_API_KEY]';
+    }
+    
+    let parsedBody: any = {};
+    try {
+      if (typeof init.body === 'string') parsedBody = JSON.parse(init.body);
+    } catch {}
+
+    console.log('\n==================================================');
+    console.log('[OPENROUTER HTTP REQUEST]');
+    console.log(`Provider: ${AI_CONFIG.PROVIDER}`);
+    console.log(`Endpoint: ${url}`);
+    console.log(`Headers: ${JSON.stringify(headers, null, 2)}`);
+    console.log(`Model: ${parsedBody.model}`);
+    console.log(`Temperature: ${parsedBody.temperature ?? 'default'}`);
+    console.log(`Max Tokens: ${parsedBody.max_tokens ?? 'default'}`);
+    console.log(`Messages: ${JSON.stringify(parsedBody.messages).substring(0, 500)}...`);
+    console.log('==================================================\n');
+
+    const response = await fetch(url, init);
+    
+    // TASK 5: Log immediately after OpenRouter returns
+    const resClone = response.clone();
+    let rawResponseBody = '';
+    try {
+      rawResponseBody = await resClone.text();
+    } catch (e) {
+      rawResponseBody = 'Could not read response body';
+    }
+
+    const resHeaders: Record<string, string> = {};
+    response.headers.forEach((value, key) => { resHeaders[key] = value; });
+
+    console.log('\n==================================================');
+    console.log('[OPENROUTER HTTP RESPONSE]');
+    console.log(`HTTP Status: ${response.status} ${response.statusText}`);
+    console.log(`Headers: ${JSON.stringify(resHeaders, null, 2)}`);
+    if (!response.ok) {
+      console.error(`Error Body: ${rawResponseBody}`);
+    } else {
+      console.log(`Raw Response: (Stream/Chunked) or ${rawResponseBody.substring(0, 200)}...`);
+    }
+    console.log('==================================================\n');
+
+    return response;
+  }
 });
 
 export type AIFeature = 
@@ -59,7 +111,7 @@ async function executeGeneration(
 
   console.log(`Provider: ${AI_CONFIG.PROVIDER}`);
   console.log(`Model: ${model}`);
-  console.log(`Base URL: ${AI_CONFIG.BLUESMIND_BASE_URL}`);
+  console.log(`Base URL: ${AI_CONFIG.OPENROUTER_BASE_URL}`);
   console.log(`Endpoint: /chat/completions`);
   console.log(`[AI-CLIENT] Sending request to model=${model}, hasImage=${!!base64Image}, messagesCount=${messages.length}`);
   const startTime = Date.now();
@@ -69,6 +121,7 @@ async function executeGeneration(
   const stream = await aiClient.chat.completions.create({
     model: model,
     messages: messages,
+    max_tokens: 3000,
     stream: true,
   });
   console.log(`[AI-CLIENT] Stream opened successfully (${Date.now() - startTime}ms)`);
@@ -115,8 +168,8 @@ export async function generateAIContent(
   systemInstruction?: string,
   base64Image?: string,
 ) {
-  if (!AI_CONFIG.BLUESMIND_API_KEY || AI_CONFIG.BLUESMIND_API_KEY === 'PASTE_MY_BLUESMIND_API_KEY_HERE') {
-    throw new Error('BLUESMIND_API_KEY is not configured properly in .env.local.');
+  if (!AI_CONFIG.OPENROUTER_API_KEY) {
+    throw new Error('OPENROUTER_API_KEY is not configured properly in .env.local.');
   }
 
   const primaryModel = getModelForFeature(feature);
@@ -127,13 +180,24 @@ export async function generateAIContent(
     console.error(`[AI-CLIENT] PRIMARY MODEL FAILED (${primaryModel}):`);
     console.error(`[AI-CLIENT]   message: ${error.message}`);
     console.error(`[AI-CLIENT]   status:  ${error.status ?? 'N/A'}`);
-    console.error(`[AI-CLIENT]   code:    ${error.code ?? 'N/A'}`);
-    if (error.response) {
-      console.error(`[AI-CLIENT]   response status: ${error.response.status}`);
-      try { console.error(`[AI-CLIENT]   response body:   ${JSON.stringify(await error.response.json())}`); } catch {}
+    
+    // Log detailed failure internally
+    createErrorResponse(error, primaryModel);
+
+    // Fallback System
+    const fallbackModel = AI_CONFIG.FALLBACK_MODEL;
+    if (fallbackModel && fallbackModel !== primaryModel) {
+      console.log(`[AI-CLIENT] Retrying with FALLBACK MODEL (${fallbackModel})...`);
+      try {
+        return await executeGeneration(fallbackModel, prompt, systemInstruction, base64Image);
+      } catch (fallbackError: any) {
+        console.error(`[AI-CLIENT] FALLBACK MODEL FAILED (${fallbackModel}):`);
+        createErrorResponse(fallbackError, fallbackModel);
+        throw new Error('AI Generation failed. The provider is currently overloaded or unavailable. Please try again shortly.');
+      }
     }
     
-    throw createErrorResponse(error, primaryModel);
+    throw new Error('AI Generation failed. The provider is currently overloaded or unavailable. Please try again shortly.');
   }
 }
 
@@ -160,5 +224,6 @@ function createErrorResponse(error: any, model: string) {
 - Request ID: ${requestId}
 - Raw Response: ${rawResponse}`;
 
+  console.error(detailedError);
   return new Error(detailedError);
 }

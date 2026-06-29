@@ -4,8 +4,8 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
 // Overwrite for test script
-AI_CONFIG.BLUESMIND_API_KEY = process.env.BLUESMIND_API_KEY;
-AI_CONFIG.BLUESMIND_BASE_URL = 'https://api.bluesminds.com';
+AI_CONFIG.OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
+AI_CONFIG.OPENROUTER_BASE_URL = 'https://api.openrouter.ai/api';
 AI_CONFIG.ACTIVE_MODEL = process.env.AI_MODEL || 'gpt-4o-mini';
 
 async function test() {
