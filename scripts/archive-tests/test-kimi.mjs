@@ -10,7 +10,7 @@ async function test() {
       'Authorization': 'Bearer ' + apiKey
     },
     body: JSON.stringify({
-      model: 'kimi-k2.5',
+      model: process.env.AI_MODEL || 'gpt-5.5',
       messages: [{role: 'user', content: 'hello'}]
     })
   });

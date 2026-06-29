@@ -57,6 +57,10 @@ async function executeGeneration(
     messages.push({ role: 'user', content: prompt });
   }
 
+  console.log(`Provider: ${AI_CONFIG.PROVIDER}`);
+  console.log(`Model: ${model}`);
+  console.log(`Base URL: ${AI_CONFIG.BLUESMIND_BASE_URL}`);
+  console.log(`Endpoint: /chat/completions`);
   console.log(`[AI-CLIENT] Sending request to model=${model}, hasImage=${!!base64Image}, messagesCount=${messages.length}`);
   const startTime = Date.now();
 
@@ -129,41 +133,32 @@ export async function generateAIContent(
       try { console.error(`[AI-CLIENT]   response body:   ${JSON.stringify(await error.response.json())}`); } catch {}
     }
     
-    const isGPT5 = primaryModel.includes('gpt-5');
-    if (isGPT5) {
-      console.log(`[AI Client Router] Initiating automatic fallback to kimi-k2.5 for feature ${feature}...`);
-      try {
-        return await executeGeneration('kimi-k2.5', prompt, systemInstruction, base64Image);
-      } catch (fallbackError: any) {
-        console.error(`[AI Client Router] Fallback generation also failed:`, fallbackError.message);
-        throw createErrorResponse(fallbackError);
-      }
-    }
-
-    throw createErrorResponse(error);
+    throw createErrorResponse(error, primaryModel);
   }
 }
 
-function createErrorResponse(error: any) {
-  let errorMessage = error.message || 'Unknown AI generation error';
-  
-  if (
-    errorMessage.includes('504') ||
-    errorMessage.includes('Time-out') ||
-    errorMessage.includes('Gateway Time-out') ||
-    errorMessage.includes('502') ||
-    errorMessage.includes('Bad Gateway') ||
-    errorMessage.includes('upstream error') ||
-    errorMessage.includes('do request failed') ||
-    errorMessage.includes('request failed') ||
-    errorMessage.includes('upstream') ||
-    errorMessage.includes('ECONNREFUSED') ||
-    errorMessage.includes('ECONNRESET') ||
-    errorMessage.includes('ETIMEDOUT') ||
-    errorMessage.includes('fetch failed')
-  ) {
-    errorMessage = 'We couldn\'t process the AI response. Please regenerate.';
+function createErrorResponse(error: any, model: string) {
+  const status = error.status || error.response?.status || 'N/A';
+  const providerError = error.message || 'Unknown error';
+  const requestId = error.headers?.['x-request-id'] || error.response?.headers?.get?.('x-request-id') || 'N/A';
+  let rawResponse = 'N/A';
+
+  try {
+    if (error.error) {
+      rawResponse = typeof error.error === 'string' ? error.error : JSON.stringify(error.error);
+    } else if (error.response?.data) {
+      rawResponse = JSON.stringify(error.response.data);
+    }
+  } catch (e) {
+    rawResponse = 'Could not parse response';
   }
 
-  return new Error(errorMessage);
+  const detailedError = `AI Request Failed:
+- HTTP Status: ${status}
+- Provider Error: ${providerError}
+- Model Used: ${model}
+- Request ID: ${requestId}
+- Raw Response: ${rawResponse}`;
+
+  return new Error(detailedError);
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateAIContent } from '@/lib/ai/client';
+import { BASE_FORMATTING_RULES, ANTI_HALLUCINATION } from '@/lib/ai/prompts';
 
 export async function POST(req: Request) {
   try {
@@ -11,34 +12,20 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+    const t0 = performance.now();
+    console.log(`[CASE-STUDY-FORGE] Validation: ${performance.now() - t0}ms`);
 
     const systemInstruction = `You are an expert technical storyteller and case study writer.
 Task: Convert technical experiences into engaging LinkedIn case studies.
 
-NEVER INVENT (CRITICAL):
-* Revenue, Users, Downloads, Clients, Funding, Metrics, Awards, or Results not provided.
-* Do not fill gaps with invented stories. Expand on the reflection and learning process instead.
-* Authenticity > Creativity.
+${ANTI_HALLUCINATION}
 
 CONTENT GUIDELINES:
 * FEATURE-TO-BENEFIT: Translate features into benefits (e.g. instead of "AI Generator", write "helps users generate content rapidly").
 * TECH STACK: Explain why technologies were useful, don't just list them.
 * PROJECT LINK: If provided, infer the problem solved and value provided.
 
-GLOBAL POSTFORGE V2.0 FORMATTING RULES:
-1. TITLE: First line must visually stand out. No boring paragraphs.
-2. EMOJIS: 3-10 context-aware emojis. Never spam.
-3. HIERARCHY: Use visual highlights ("💡 Biggest Lesson:") sparingly.
-4. PARAGRAPHS: Mobile-first. Max 1-2 sentences per paragraph.
-5. HIGHLIGHTS: Convert features into benefits using bullets.
-6. PUNCHY LINES: Add 2-5 standalone punchy sentences for memorability.
-7. CTA: End with a meaningful discussion question.
-8. HASHTAGS: 8-12 relevant hashtags.
-9. VARIATION: Vary hook, paragraph, and CTA styles.
-10. HUMANIZATION: Sound like a real person, not an AI.
-
-OUTPUT FORMAT:
-Generate only the final LinkedIn post. No internal labels or headers (e.g., no "Hook:").
+${BASE_FORMATTING_RULES}
 
 ADAPTIVE LENGTH:
 Match output length to provided information (250-700 words) to avoid filler.
@@ -52,7 +39,14 @@ Project Link: ${projectLink || 'Not provided'}
 
 Write a detailed LinkedIn case study post following the exact guidelines.`;
 
+    const t1 = performance.now();
+    console.log(`[CASE-STUDY-FORGE] Prompt Build: ${t1 - t0}ms`);
+
     const generatedPost = await generateAIContent('case-study-forge', prompt, systemInstruction);
+    
+    const t2 = performance.now();
+    console.log(`[CASE-STUDY-FORGE] API Request & AI Response: ${t2 - t1}ms`);
+    console.log(`[CASE-STUDY-FORGE] Total Time: ${t2 - t0}ms`);
 
     return NextResponse.json({ post: generatedPost.trim() });
   } catch (error: any) {

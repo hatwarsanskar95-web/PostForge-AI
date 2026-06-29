@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateAIContent } from '@/lib/ai/client';
+import { cleanText, ANTI_HALLUCINATION } from '@/lib/ai/prompts';
 import mammoth from 'mammoth';
 
 export const maxDuration = 90;
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
 
+    const t0 = performance.now();
     console.log(`[RESUME-ANALYZER] Step 1 - File: ${file ? `name=${file.name}, size=${file.size}, type="${file.type}"` : 'NULL'}`);
 
     if (!file) {
@@ -98,9 +100,12 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+    
+    const tPrep = performance.now();
+    console.log(`[RESUME-ANALYZER] File parsing took ${tPrep - t0}ms`);
 
-    const textToAnalyze = extractedText.substring(0, 4000);
-    console.log(`[RESUME-ANALYZER] Step 3 - Text OK. Using first ${textToAnalyze.length} chars for analysis.`);
+    const textToAnalyze = cleanText(extractedText);
+    console.log(`[RESUME-ANALYZER] Step 3 - Text OK. Using cleaned ${textToAnalyze.length} chars for analysis.`);
 
     const systemInstruction = `You are a world-class LinkedIn Personal Branding Expert.
 Analyze the provided resume text and extract key content opportunities.
@@ -123,18 +128,21 @@ CRITICAL REQUIREMENT: Output EXACTLY in the following JSON format. Do not add ma
   ]
 }
 
-ANTI-HALLUCINATION RULES:
-* NEVER invent metrics, companies, or facts.
+${ANTI_HALLUCINATION}
 * Use ONLY information from the resume.
 * Generate exactly 10 post ideas across relevant categories. KEEP IDEAS VERY SHORT (1 sentence max).`;
 
     const userPrompt = `Here is the resume text to analyze:\n\n${textToAnalyze}`;
 
+    const t1 = performance.now();
+    console.log(`[RESUME-ANALYZER] Prompt build took ${t1 - tPrep}ms`);
     console.log(`[RESUME-ANALYZER] Step 4 - Calling AI API...`);
 
     let responseText: string;
     try {
       responseText = await generateAIContent('resume-analyzer', userPrompt, systemInstruction);
+      const t2 = performance.now();
+      console.log(`[RESUME-ANALYZER] AI API Request took ${t2 - t1}ms`);
       console.log(`[RESUME-ANALYZER] Step 5 - AI responded. Length: ${responseText?.length ?? 0}`);
       console.log(`[RESUME-ANALYZER] Step 5 - RAW AI RESPONSE (first 500 chars):\n${(responseText ?? '').substring(0, 500)}`);
     } catch (aiError: any) {
@@ -162,7 +170,8 @@ ANTI-HALLUCINATION RULES:
       );
     }
 
-    console.log(`[RESUME-ANALYZER] Step 7 - SUCCESS. Returning data.`);
+    console.log(`[RESUME-ANALYZER] Step 6 - SUCCESS. Returning data.`);
+    console.log(`[RESUME-ANALYZER] Total processing time: ${performance.now() - t0}ms`);
     return NextResponse.json({ data: result });
 
   } catch (error: any) {
