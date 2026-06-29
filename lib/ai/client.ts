@@ -1,202 +1,135 @@
-import OpenAI from 'openai';
+import { GoogleGenAI } from '@google/genai';
 import { AI_CONFIG } from './config';
 
-// Initialize the OpenAI-compatible client for OpenRouter
-const aiClient = new OpenAI({
-  get apiKey() { return AI_CONFIG.OPENROUTER_API_KEY; },
-  get baseURL() { return AI_CONFIG.OPENROUTER_BASE_URL; },
-  fetch: async (url, init) => {
-    if (!init) return fetch(url, init);
-    
-    // TASK 4: Log before EVERY OpenRouter request
-    const headers = { ...(init.headers as Record<string, string>) };
-    if (headers['Authorization']) {
-      headers['Authorization'] = 'Bearer [HIDDEN_API_KEY]';
+let aiClient: GoogleGenAI | null = null;
+
+function getAiClient() {
+  if (!aiClient) {
+    if (!AI_CONFIG.GOOGLE_API_KEY) {
+      throw new Error('GOOGLE_API_KEY is not configured properly in .env.local.');
     }
-    
-    let parsedBody: any = {};
-    try {
-      if (typeof init.body === 'string') parsedBody = JSON.parse(init.body);
-    } catch {}
-
-    console.log('\n==================================================');
-    console.log('[OPENROUTER HTTP REQUEST]');
-    console.log(`Provider: ${AI_CONFIG.PROVIDER}`);
-    console.log(`Endpoint: ${url}`);
-    console.log(`Headers: ${JSON.stringify(headers, null, 2)}`);
-    console.log(`Model: ${parsedBody.model}`);
-    console.log(`Temperature: ${parsedBody.temperature ?? 'default'}`);
-    console.log(`Max Tokens: ${parsedBody.max_tokens ?? 'default'}`);
-    console.log(`Messages: ${JSON.stringify(parsedBody.messages).substring(0, 500)}...`);
-    console.log('==================================================\n');
-
-    const response = await fetch(url, init);
-    
-    // TASK 5: Log immediately after OpenRouter returns
-    const resClone = response.clone();
-    let rawResponseBody = '';
-    try {
-      rawResponseBody = await resClone.text();
-    } catch (e) {
-      rawResponseBody = 'Could not read response body';
-    }
-
-    const resHeaders: Record<string, string> = {};
-    response.headers.forEach((value, key) => { resHeaders[key] = value; });
-
-    console.log('\n==================================================');
-    console.log('[OPENROUTER HTTP RESPONSE]');
-    console.log(`HTTP Status: ${response.status} ${response.statusText}`);
-    console.log(`Headers: ${JSON.stringify(resHeaders, null, 2)}`);
-    if (!response.ok) {
-      console.error(`Error Body: ${rawResponseBody}`);
-    } else {
-      console.log(`Raw Response: (Stream/Chunked) or ${rawResponseBody.substring(0, 200)}...`);
-    }
-    console.log('==================================================\n');
-
-    return response;
+    aiClient = new GoogleGenAI({ apiKey: AI_CONFIG.GOOGLE_API_KEY });
   }
-});
+  return aiClient;
+}
 
 export type AIFeature = 
-  | 'post-generator'
+  | 'post-generator' 
   | 'content-improver'
   | 'achievement-generator'
   | 'case-study-forge'
+  | 'resume-master-post'
   | 'resume-to-posts'
   | 'resume-analyzer'
-  | 'resume-master-post'
   | 'image-to-post';
 
-function getModelForFeature(feature: AIFeature): string {
+function getModelForFeature(feature: AIFeature) {
   switch (feature) {
     case 'post-generator': return AI_CONFIG.POST_GENERATOR_MODEL;
     case 'content-improver': return AI_CONFIG.CONTENT_IMPROVER_MODEL;
     case 'achievement-generator': return AI_CONFIG.ACHIEVEMENT_MODEL;
     case 'case-study-forge': return AI_CONFIG.CASE_STUDY_MODEL;
-    case 'resume-to-posts': return AI_CONFIG.RESUME_MODEL;
-    case 'resume-analyzer': return AI_CONFIG.RESUME_MODEL;
-    case 'resume-master-post': return AI_CONFIG.RESUME_MODEL;
+    case 'resume-master-post':
+    case 'resume-to-posts':
+    case 'resume-analyzer':
+      return AI_CONFIG.RESUME_MODEL;
     case 'image-to-post': return AI_CONFIG.IMAGE_MODEL;
     default: return AI_CONFIG.ACTIVE_MODEL;
   }
 }
 
 /**
- * Executes the AI generation request with streaming to bypass NGINX idle timeout.
+ * Executes the AI generation request using Google AI Studio.
  */
 async function executeGeneration(
   model: string,
   prompt: string,
   systemInstruction?: string,
   base64Image?: string,
+  feature?: string
 ) {
-  const messages: any[] = [];
-  if (systemInstruction) {
-    messages.push({ role: 'system', content: systemInstruction });
-  }
-
+  const contents: any[] = [];
+  
   if (base64Image) {
-    messages.push({
-      role: 'user',
-      content: [
-        { type: "text", text: prompt },
-        { type: "image_url", image_url: { url: base64Image } }
-      ]
+    let data = base64Image;
+    let mimeType = 'image/jpeg';
+    
+    // Parse Data URI if present
+    if (base64Image.startsWith('data:')) {
+      const parts = base64Image.split(',');
+      if (parts.length === 2) {
+        mimeType = parts[0].replace('data:', '').replace(';base64', '');
+        data = parts[1];
+      }
+    }
+    
+    contents.push({
+      inlineData: {
+        data: data,
+        mimeType: mimeType
+      }
     });
-  } else {
-    messages.push({ role: 'user', content: prompt });
   }
+  
+  contents.push(prompt);
 
+  const startTime = Date.now();
+  console.log('\n==================================================');
+  console.log('[AI GENERATION REQUEST]');
   console.log(`Provider: ${AI_CONFIG.PROVIDER}`);
   console.log(`Model: ${model}`);
-  console.log(`Base URL: ${AI_CONFIG.OPENROUTER_BASE_URL}`);
-  console.log(`Endpoint: /chat/completions`);
-  console.log(`[AI-CLIENT] Sending request to model=${model}, hasImage=${!!base64Image}, messagesCount=${messages.length}`);
-  const startTime = Date.now();
+  console.log(`Endpoint: Google AI Studio`);
+  console.log(`Feature: ${feature}`);
+  console.log(`Request Time: ${new Date(startTime).toISOString()}`);
+  console.log('==================================================\n');
 
-  // Use streaming internally to bypass the 60-second NGINX idle timeout (504 Gateway Timeout).
-  // Note: stream: true must be in the literal call for TypeScript to narrow the return type correctly.
-  const stream = await aiClient.chat.completions.create({
-    model: model,
-    messages: messages,
-    max_tokens: 3000,
-    stream: true,
-  });
-  console.log(`[AI-CLIENT] Stream opened successfully (${Date.now() - startTime}ms)`);
+  try {
+    const config: any = {};
+    if (systemInstruction) {
+      config.systemInstruction = systemInstruction;
+    }
+    
+    // Use generateContent directly (it handles streaming internally or we can just await the full response)
+    const response = await getAiClient().models.generateContent({
+      model: model,
+      contents: contents,
+      config: config
+    });
 
-  let fullResponse = '';
-  let firstTokenTime = null;
+    const endTime = Date.now();
+    console.log('\n==================================================');
+    console.log('[AI GENERATION RESPONSE]');
+    console.log(`Status: 200 OK`);
+    console.log(`Response Time: ${endTime - startTime}ms`);
+    console.log(`Errors: None`);
+    console.log('==================================================\n');
 
-  for await (const chunk of stream) {
-    if (!firstTokenTime) firstTokenTime = Date.now() - startTime;
-    fullResponse += chunk.choices[0]?.delta?.content || '';
+    return response.text || '';
+
+  } catch (error: any) {
+    const endTime = Date.now();
+    console.error('\n==================================================');
+    console.error('[AI GENERATION FAILED]');
+    console.error(`Status: Error`);
+    console.error(`Response Time: ${endTime - startTime}ms`);
+    console.error(`Errors: ${error.message || JSON.stringify(error)}`);
+    console.error('==================================================\n');
+    throw error;
   }
-
-  const totalTime = Date.now() - startTime;
-  
-  // Estimate tokens
-  const promptLength = messages.reduce((acc, m) => acc + (typeof m.content === 'string' ? m.content.length : JSON.stringify(m.content).length), 0);
-  const estimatedPromptTokens = Math.ceil(promptLength / 4);
-  const estimatedCompletionTokens = Math.ceil(fullResponse.length / 4);
-
-  console.log(`\n======================================`);
-  console.log(`🤖 AI GENERATION LOG`);
-  console.log(`Model Used:        ${model}`);
-  console.log(`Prompt Tokens:     ~${estimatedPromptTokens}`);
-  console.log(`Completion Tokens: ~${estimatedCompletionTokens}`);
-  console.log(`First Token Time:  ${firstTokenTime}ms`);
-  console.log(`Total Time:        ${totalTime}ms`);
-  console.log(`======================================\n`);
-
-  return fullResponse;
 }
 
-/**
- * Standardized function to generate content using the centralized AI model router.
- * 
- * @param feature The identifier of the feature making the request
- * @param prompt The main prompt/input for the AI
- * @param systemInstruction Optional system instructions to guide the model's behavior
- * @param base64Image Optional base64 encoded image for vision capabilities
- * @returns The generated text response
- */
 export async function generateAIContent(
   feature: AIFeature,
   prompt: string,
   systemInstruction?: string,
   base64Image?: string,
 ) {
-  if (!AI_CONFIG.OPENROUTER_API_KEY) {
-    throw new Error('OPENROUTER_API_KEY is not configured properly in .env.local.');
-  }
-
   const primaryModel = getModelForFeature(feature);
 
   try {
-    return await executeGeneration(primaryModel, prompt, systemInstruction, base64Image);
+    return await executeGeneration(primaryModel, prompt, systemInstruction, base64Image, feature);
   } catch (error: any) {
-    console.error(`[AI-CLIENT] PRIMARY MODEL FAILED (${primaryModel}):`);
-    console.error(`[AI-CLIENT]   message: ${error.message}`);
-    console.error(`[AI-CLIENT]   status:  ${error.status ?? 'N/A'}`);
-    
-    // Log detailed failure internally
     createErrorResponse(error, primaryModel);
-
-    // Fallback System
-    const fallbackModel = AI_CONFIG.FALLBACK_MODEL;
-    if (fallbackModel && fallbackModel !== primaryModel) {
-      console.log(`[AI-CLIENT] Retrying with FALLBACK MODEL (${fallbackModel})...`);
-      try {
-        return await executeGeneration(fallbackModel, prompt, systemInstruction, base64Image);
-      } catch (fallbackError: any) {
-        console.error(`[AI-CLIENT] FALLBACK MODEL FAILED (${fallbackModel}):`);
-        createErrorResponse(fallbackError, fallbackModel);
-        throw new Error('AI Generation failed. The provider is currently overloaded or unavailable. Please try again shortly.');
-      }
-    }
-    
     throw new Error('AI Generation failed. The provider is currently overloaded or unavailable. Please try again shortly.');
   }
 }
@@ -204,9 +137,8 @@ export async function generateAIContent(
 function createErrorResponse(error: any, model: string) {
   const status = error.status || error.response?.status || 'N/A';
   const providerError = error.message || 'Unknown error';
-  const requestId = error.headers?.['x-request-id'] || error.response?.headers?.get?.('x-request-id') || 'N/A';
+  
   let rawResponse = 'N/A';
-
   try {
     if (error.error) {
       rawResponse = typeof error.error === 'string' ? error.error : JSON.stringify(error.error);
@@ -221,9 +153,7 @@ function createErrorResponse(error: any, model: string) {
 - HTTP Status: ${status}
 - Provider Error: ${providerError}
 - Model Used: ${model}
-- Request ID: ${requestId}
 - Raw Response: ${rawResponse}`;
 
   console.error(detailedError);
-  return new Error(detailedError);
 }

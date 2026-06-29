@@ -321,37 +321,10 @@ function LoginContent() {
   )
 }
 
-class ErrorBoundary extends React.Component<{ fallback: (error: Error) => React.ReactNode, children: React.ReactNode }, { hasError: boolean, error: Error | null }> {
-  constructor(props: any) {
-    super(props)
-    this.state = { hasError: false, error: null }
-  }
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error }
-  }
-  componentDidCatch(error: Error, errorInfo: any) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo)
-  }
-  render() {
-    if (this.state.hasError) {
-      return this.props.fallback(this.state.error!)
-    }
-    return this.props.children
-  }
-}
-
 export default function LoginPage() {
   return (
-    <ErrorBoundary fallback={(error) => (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center text-red-500 p-4">
-        <h1 className="text-xl font-bold mb-4">Hydration / Render Error</h1>
-        <p className="text-sm font-mono whitespace-pre-wrap">{error.toString()}</p>
-        <p className="text-xs font-mono mt-4 opacity-50">{error.stack}</p>
-      </div>
-    )}>
-      <Suspense fallback={<div className="min-h-screen bg-black" />}>
-        <LoginContent />
-      </Suspense>
-    </ErrorBoundary>
+    <Suspense fallback={<div className="min-h-screen bg-black" />}>
+      <LoginContent />
+    </Suspense>
   )
 }

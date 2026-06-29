@@ -1,9 +1,7 @@
 export const AI_CONFIG = {
-  get PROVIDER() { return process.env.AI_PROVIDER || 'openrouter'; },
-  get ACTIVE_MODEL() { return process.env.AI_MODEL as string; },
-  get FALLBACK_MODEL() { return process.env.FALLBACK_MODEL as string; },
-  get OPENROUTER_API_KEY() { return process.env.OPENROUTER_API_KEY || ''; },
-  get OPENROUTER_BASE_URL() { return process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1'; },
+  get PROVIDER() { return process.env.AI_PROVIDER || 'google'; },
+  get ACTIVE_MODEL() { return process.env.AI_MODEL || 'gemini-2.5-flash'; },
+  get GOOGLE_API_KEY() { return process.env.GOOGLE_API_KEY || ''; },
   
   // Feature Models
   get POST_GENERATOR_MODEL() { return (process.env.POST_GENERATOR_MODEL || process.env.AI_MODEL) as string; },
