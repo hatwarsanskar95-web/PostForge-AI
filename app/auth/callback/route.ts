@@ -77,9 +77,24 @@ export async function GET(request: NextRequest) {
   let sessionUser = null
 
   if (code) {
-    // Build a temporary response to collect the cookies from exchangeCodeForSession
-    const tempResponse = NextResponse.next()
-    const supabase = createSupabaseWithResponse(tempResponse)
+    let cookiesToSetOnRedirect: { name: string; value: string; options: any }[] = []
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSetOnRedirect = cookiesToSet
+            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          },
+        },
+      }
+    )
+
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
     if (error) {
       console.error('[auth/callback] code exchange error:', error.message)
@@ -87,22 +102,14 @@ export async function GET(request: NextRequest) {
       sessionUser = data.user
       console.log('[auth/callback] Session established. User:', sessionUser?.email, '| Provider:', sessionUser?.app_metadata?.provider)
 
-      // --- Step 5: Google/OAuth user ---
-      // Check if a profile already exists in public.users.
-      // New users (no profile) → onboarding at /login?mode=complete.
-      // Existing users (profile found) → /dashboard directly.
+      // --- Google / OAuth user routing ---
       const isEmailProvider = sessionUser?.app_metadata?.provider === 'email'
       let destination: string
 
       if (!isEmailProvider) {
         // Query public.users to detect first-time vs returning Google user.
-        // IMPORTANT: The handle_new_user DB trigger auto-creates a row for ALL
-        // new auth users immediately — so checking row existence always returns true.
-        // Instead, check whether the profile is COMPLETE by verifying linkedin_url
-        // is non-empty (trigger inserts '' for Google users who haven't onboarded).
-        const { createAdminClient } = await import('@/lib/supabase/server')
-        const adminClient = createAdminClient()
-        const { data: existingProfile } = await adminClient
+        // public.users has a public SELECT policy, so supabase client with anon key works seamlessly.
+        const { data: existingProfile } = await supabase
           .from('users')
           .select('id, linkedin_url')
           .eq('id', sessionUser!.id)
@@ -111,11 +118,11 @@ export async function GET(request: NextRequest) {
         const isProfileComplete = !!(existingProfile?.linkedin_url && existingProfile.linkedin_url.trim() !== '')
 
         if (isProfileComplete) {
-          // Returning Google user — profile complete → go to dashboard
+          // Returning Google user with complete profile → go directly to dashboard
           destination = '/dashboard'
           console.log('[auth/callback] Existing Google user (profile complete) — redirecting to /dashboard')
         } else {
-          // First-time Google user — profile empty (trigger row exists but no data)
+          // New Google user or incomplete profile → go to complete profile form
           destination = '/login?mode=complete'
           console.log('[auth/callback] New Google user (profile incomplete) — redirecting to /login?mode=complete')
         }
@@ -129,21 +136,30 @@ export async function GET(request: NextRequest) {
       }
 
       const finalResponse = NextResponse.redirect(buildRedirectUrl(destination))
-      // Copy all auth cookies from tempResponse onto the final redirect
-      tempResponse.cookies.getAll().forEach(cookie => {
-        finalResponse.cookies.set(cookie.name, cookie.value, {
-          httpOnly: cookie.httpOnly,
-          secure: cookie.secure,
-          sameSite: cookie.sameSite as 'lax' | 'strict' | 'none' | undefined,
-          maxAge: cookie.maxAge,
-          path: cookie.path,
-        })
+      cookiesToSetOnRedirect.forEach(({ name, value, options }) => {
+        finalResponse.cookies.set(name, value, options)
       })
       return finalResponse
     }
   } else if (token_hash && type) {
-    const tempResponse = NextResponse.next()
-    const supabase = createSupabaseWithResponse(tempResponse)
+    let cookiesToSetOnRedirect: { name: string; value: string; options: any }[] = []
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSetOnRedirect = cookiesToSet
+            cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+          },
+        },
+      }
+    )
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data, error } = await supabase.auth.verifyOtp({ token_hash, type: type as any })
     if (error) {
@@ -157,14 +173,8 @@ export async function GET(request: NextRequest) {
         : next
 
       const finalResponse = NextResponse.redirect(buildRedirectUrl(destination))
-      tempResponse.cookies.getAll().forEach(cookie => {
-        finalResponse.cookies.set(cookie.name, cookie.value, {
-          httpOnly: cookie.httpOnly,
-          secure: cookie.secure,
-          sameSite: cookie.sameSite as 'lax' | 'strict' | 'none' | undefined,
-          maxAge: cookie.maxAge,
-          path: cookie.path,
-        })
+      cookiesToSetOnRedirect.forEach(({ name, value, options }) => {
+        finalResponse.cookies.set(name, value, options)
       })
       return finalResponse
     }
