@@ -105,14 +105,11 @@ function LoginContent() {
   const [isLoading, setIsLoading] = useState(true)
   const [loadingError, setLoadingError] = useState<string | null>(null)
   const [pendingVerificationEmail, setPendingVerificationEmail] = useState('')
-  const [debugText, setDebugText] = useState('Initializing (v2)...')
-  const [supabaseClient, setSupabaseClient] = useState<any>(null)
 
   useEffect(() => {
     let supabase: any;
     try {
       supabase = createClient();
-      setSupabaseClient(supabase);
     } catch (e: any) {
       console.error('[Auth] Failed to initialize Supabase client:', e);
     }
@@ -225,11 +222,17 @@ function LoginContent() {
   }, [isCompleteMode])
 
   const handleGoogleSignIn = async () => {
-    if (!supabaseClient) return;
-    await supabaseClient.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    })
+    // Create the Supabase client directly here — do NOT rely on supabaseClient state
+    // which may be null during the first render before the useEffect runs.
+    try {
+      const supabase = createClient();
+      await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
+      })
+    } catch (e: any) {
+      console.error('[Auth] Google sign-in failed:', e);
+    }
   }
 
   const handleEmailSubmit = async (data: SignupData | { email: string; password: string }) => {
@@ -248,7 +251,7 @@ function LoginContent() {
         window.location.href = '/dashboard'
         return { error: null }
       }
-      return result.error
+      return { error: result.error }
     }
     const result = await signup({
       email: signupData.email, password: signupData.password, fullName: signupData.fullName, username: signupData.username, mobileNumber: signupData.mobileNumber, linkedinUrl: signupData.linkedinUrl, avatarId: signupData.avatarId,
@@ -291,9 +294,6 @@ function LoginContent() {
       <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white font-mono p-4">
         <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4" />
         <p className="text-lg mb-2">Loading...</p>
-        <p className="text-xs text-neutral-500 whitespace-pre-wrap text-center max-w-md">
-          {debugText}
-        </p>
       </div>
     )
   }

@@ -311,18 +311,14 @@ export const AuthComponent = ({ logo = <DefaultLogo />, brandName = "PostForge A
               {modalStatus === 'success' && !isCheckEmail && <div className="flex flex-col items-center gap-6">{modalSteps[modalSteps.length - 1].icon}<p className="text-xl font-medium text-white text-center">{successMessage}</p></div>}
               {modalStatus === 'success' && isCheckEmail && (
                 <div className="flex flex-col items-center gap-5 text-center">
-                  <Mail className="w-16 h-16 text-blue-400" />
-                  <p className="text-xl font-semibold text-white">{successMessage}</p>
-                  <p className="text-sm text-white/60 max-w-xs">Click the link in your email to verify your account. Once verified, come back here and refresh the page to access your dashboard.</p>
-                  <button
-                    type="button"
-                    onClick={handleResend}
-                    disabled={resendCooldown > 0}
-                    className={cn('mt-2 px-6 py-2 rounded-full text-sm font-medium transition-all', resendCooldown > 0 ? 'bg-white/10 text-white/40 cursor-not-allowed' : 'bg-white/20 text-white hover:bg-white/30 cursor-pointer')}
-                  >
-                    {resendCooldown > 0 ? `Resend email in ${resendCooldown}s` : 'Resend verification email'}
-                  </button>
-                  {resendMsg && <p className={cn('text-sm', resendMsg === 'Email resent!' ? 'text-green-400' : 'text-red-400')}>{resendMsg}</p>}
+                  {/* Tick / checkmark indicator */}
+                  <div className="relative flex items-center justify-center">
+                    <div className="w-20 h-20 rounded-full bg-green-500/15 border-2 border-green-500/40 flex items-center justify-center">
+                      <Check className="w-10 h-10 text-green-400" strokeWidth={2.5} />
+                    </div>
+                  </div>
+                  <p className="text-xl font-semibold text-white">Welcome Aboard!</p>
+                  <p className="text-sm text-white/60 max-w-xs">Please verify your email to continue.<br />Click the link we sent to your inbox to activate your account.</p>
                   <button
                     type="button"
                     onClick={() => {
