@@ -24,17 +24,18 @@ export type AIFeature =
   | 'image-to-post';
 
 function getModelForFeature(feature: AIFeature) {
+  const fallback = AI_CONFIG.ACTIVE_MODEL || 'gemini-2.5-flash';
   switch (feature) {
-    case 'post-generator': return AI_CONFIG.POST_GENERATOR_MODEL;
-    case 'content-improver': return AI_CONFIG.CONTENT_IMPROVER_MODEL;
-    case 'achievement-generator': return AI_CONFIG.ACHIEVEMENT_MODEL;
-    case 'case-study-forge': return AI_CONFIG.CASE_STUDY_MODEL;
+    case 'post-generator': return AI_CONFIG.POST_GENERATOR_MODEL || fallback;
+    case 'content-improver': return AI_CONFIG.CONTENT_IMPROVER_MODEL || fallback;
+    case 'achievement-generator': return AI_CONFIG.ACHIEVEMENT_MODEL || fallback;
+    case 'case-study-forge': return AI_CONFIG.CASE_STUDY_MODEL || fallback;
     case 'resume-master-post':
     case 'resume-to-posts':
     case 'resume-analyzer':
-      return AI_CONFIG.RESUME_MODEL;
-    case 'image-to-post': return AI_CONFIG.IMAGE_MODEL;
-    default: return AI_CONFIG.ACTIVE_MODEL;
+      return AI_CONFIG.RESUME_MODEL || fallback;
+    case 'image-to-post': return AI_CONFIG.IMAGE_MODEL || fallback;
+    default: return fallback;
   }
 }
 

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { generateAIContent } from '@/lib/ai/client';
-import sharp from 'sharp';
 import { BASE_FORMATTING_RULES, ANTI_HALLUCINATION, LENGTH_RULES } from '@/lib/ai/prompts';
 
 export const dynamic = 'force-dynamic';
@@ -35,39 +34,19 @@ export async function POST(req: Request) {
       );
     }
 
-    if (file.size > 50 * 1024 * 1024) {
+    if (file.size > 20 * 1024 * 1024) {
       console.log(`[IMAGE-TO-POST] Step 2 FAIL - File too large: ${file.size} bytes`);
       return NextResponse.json(
-        { success: false, error: 'Image size must be less than 50MB.' },
+        { success: false, error: 'Image size must be less than 20MB.' },
         { status: 400, headers: JSON_HEADERS }
       );
     }
 
     console.log(`[IMAGE-TO-POST] Step 2 - Validation passed. Processing image buffer...`);
-    let base64Image: string;
-    const tPrep0 = performance.now();
-
-    try {
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const optimizedBuffer = await sharp(buffer)
-        .resize({ width: 800, height: 800, fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 80 })
-        .toBuffer();
-      base64Image = `data:image/jpeg;base64,${optimizedBuffer.toString('base64')}`;
-      console.log(`[IMAGE-TO-POST] Sharp Image Processing: ${performance.now() - tPrep0}ms. Original: ${buffer.length}b, Optimized: ${optimizedBuffer.length}b`);
-    } catch (sharpError: any) {
-      console.warn('[IMAGE-TO-POST] Sharp optimization failed, attempting raw buffer fallback:', sharpError.message);
-      try {
-        const rawBuffer = Buffer.from(await file.arrayBuffer());
-        base64Image = `data:${mimeType};base64,${rawBuffer.toString('base64')}`;
-      } catch (fallbackError: any) {
-        console.error('[IMAGE-TO-POST] Buffer reading failed:', fallbackError);
-        return NextResponse.json(
-          { success: false, error: 'Could not read the uploaded image file. Please try again.' },
-          { status: 400, headers: JSON_HEADERS }
-        );
-      }
-    }
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const base64Image = `data:${mimeType};base64,${buffer.toString('base64')}`;
+    console.log(`[IMAGE-TO-POST] Converted to Base64: ${buffer.length} bytes in ${performance.now() - t0}ms`);
 
     const systemInstruction = `You are a world-class LinkedIn personal branding expert and storytelling strategist.
 Task: Analyze the provided professional image and transform it into a premium, engaging LinkedIn post.
