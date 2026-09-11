@@ -55,18 +55,39 @@ export default function ImageToPostPage() {
         body: formData,
       });
 
-      const data = await response.json();
+      const contentType = response.headers.get("content-type") || "";
+      let data: any = null;
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to generate post');
+      if (contentType.includes("application/json")) {
+        try {
+          data = await response.json();
+        } catch {
+          data = null;
+        }
       }
 
-      setGeneratedPost(data.post);
+      if (!response.ok) {
+        const errorMsg =
+          data?.error ||
+          (response.status === 413
+            ? "Image file is too large for the server. Please try a smaller image."
+            : response.status === 504
+            ? "Request timed out. Please try again."
+            : `Server returned an error (${response.status}). Please try again.`);
+        throw new Error(errorMsg);
+      }
+
+      const postContent = data?.post || "";
+      if (!postContent) {
+        throw new Error(data?.error || "We couldn't generate a post from this image. Please try again.");
+      }
+
+      setGeneratedPost(postContent);
       setIsGenerating(false);
 
       // Run database operations asynchronously without blocking the UI
       Promise.all([
-        saveToHistory("image_to_post", data.post).catch(console.error),
+        saveToHistory("image_to_post", postContent).catch(console.error),
         consumeGenerationCredit().then(() => deductCredit()).catch(console.error)
       ]);
     } catch (error: any) {
