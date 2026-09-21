@@ -18,64 +18,80 @@ const MAX_ALLOWED_BYTES = 100 * 1024 * 1024; // 100 MB
  * to ensure smooth transmission under Vercel serverless request limits
  * while preserving fine text, certificates, and visual clarity.
  */
-async function createOptimizedProcessingCopy(file: File): Promise<Blob> {
-  // If file is already small (under 3MB), return directly
-  if (file.size <= 3 * 1024 * 1024) {
+async function createOptimizedProcessingCopy(file: File): Promise<Blob | File> {
+  // If file is already small (under 4MB), send directly
+  if (file.size <= 4 * 1024 * 1024) {
     return file;
   }
 
   return new Promise((resolve) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
+    // 2.5s safety timeout to never block network dispatch
+    const timer = setTimeout(() => resolve(file), 2500);
 
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      const MAX_DIM = 2560;
-      let { width, height } = img;
+    try {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
 
-      if (width > MAX_DIM || height > MAX_DIM) {
-        if (width > height) {
-          height = Math.round((height * MAX_DIM) / width);
-          width = MAX_DIM;
-        } else {
-          width = Math.round((width * MAX_DIM) / height);
-          height = MAX_DIM;
-        }
-      }
+      img.onload = () => {
+        clearTimeout(timer);
+        try {
+          const MAX_DIM = 2560;
+          let { width, height } = img;
 
-      const canvas = document.createElement("canvas");
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext("2d");
-
-      if (!ctx) {
-        resolve(file); // Fallback to original file
-        return;
-      }
-
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-      ctx.drawImage(img, 0, 0, width, height);
-
-      canvas.toBlob(
-        (blob) => {
-          if (blob && blob.size > 0) {
-            resolve(blob);
-          } else {
-            resolve(file);
+          if (width > MAX_DIM || height > MAX_DIM) {
+            if (width > height) {
+              height = Math.round((height * MAX_DIM) / width);
+              width = MAX_DIM;
+            } else {
+              width = Math.round((width * MAX_DIM) / height);
+              height = MAX_DIM;
+            }
           }
-        },
-        "image/jpeg",
-        0.90
-      );
-    };
 
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+
+          if (!ctx) {
+            URL.revokeObjectURL(url);
+            resolve(file);
+            return;
+          }
+
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob(
+            (blob) => {
+              URL.revokeObjectURL(url);
+              if (blob && blob.size > 0) {
+                resolve(blob);
+              } else {
+                resolve(file);
+              }
+            },
+            "image/jpeg",
+            0.90
+          );
+        } catch {
+          URL.revokeObjectURL(url);
+          resolve(file);
+        }
+      };
+
+      img.onerror = () => {
+        clearTimeout(timer);
+        URL.revokeObjectURL(url);
+        resolve(file);
+      };
+
+      img.src = url;
+    } catch {
+      clearTimeout(timer);
       resolve(file);
-    };
-
-    img.src = url;
+    }
   });
 }
 
@@ -176,7 +192,11 @@ export default function ImageToPostPage() {
       ]);
     } catch (error: any) {
       console.error(error);
-      setErrorMessage(error.message || "We couldn't process the AI response. Please regenerate.");
+      const rawMsg = error.message || "";
+      const friendlyMsg = rawMsg.toLowerCase().includes("failed to fetch") || rawMsg.toLowerCase().includes("fetch failed")
+        ? "Network connection issue or request timed out. Please try again."
+        : rawMsg || "We couldn't process the AI response. Please regenerate.";
+      setErrorMessage(friendlyMsg);
       setIsGenerating(false);
     }
   };

@@ -4,7 +4,7 @@ import { BASE_FORMATTING_RULES, ANTI_HALLUCINATION, LENGTH_RULES } from '@/lib/a
 import sharp from 'sharp';
 
 export const dynamic = 'force-dynamic';
-export const maxDuration = 60;
+export const maxDuration = 120;
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
 const MAX_IMAGE_BYTES = 100 * 1024 * 1024; // 100 MB
