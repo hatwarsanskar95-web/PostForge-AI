@@ -46,20 +46,20 @@ async function executeGeneration(
   model: string,
   prompt: string,
   systemInstruction?: string,
-  base64Image?: string,
+  base64Media?: string,
   feature?: string
 ) {
   const contents: any[] = [];
   
-  if (base64Image) {
-    let data = base64Image;
+  if (base64Media) {
+    let data = base64Media;
     let mimeType = 'image/jpeg';
     
     // Parse Data URI if present
-    if (base64Image.startsWith('data:')) {
-      const parts = base64Image.split(',');
+    if (base64Media.startsWith('data:')) {
+      const parts = base64Media.split(',');
       if (parts.length === 2) {
-        mimeType = parts[0].replace('data:', '').replace(';base64', '');
+        mimeType = parts[0].replace('data:', '').replace(';base64', '').trim();
         data = parts[1];
       }
     }
@@ -90,7 +90,7 @@ async function executeGeneration(
       config.systemInstruction = systemInstruction;
     }
     
-    // Use generateContent directly (it handles streaming internally or we can just await the full response)
+    // Use generateContent directly
     const response = await getAiClient().models.generateContent({
       model: model,
       contents: contents,
@@ -123,15 +123,22 @@ export async function generateAIContent(
   feature: AIFeature,
   prompt: string,
   systemInstruction?: string,
-  base64Image?: string,
+  base64Media?: string,
 ) {
   const primaryModel = getModelForFeature(feature);
 
   try {
-    return await executeGeneration(primaryModel, prompt, systemInstruction, base64Image, feature);
+    return await executeGeneration(primaryModel, prompt, systemInstruction, base64Media, feature);
   } catch (error: any) {
-    createErrorResponse(error, primaryModel);
-    throw new Error('AI Generation failed. The provider is currently overloaded or unavailable. Please try again shortly.');
+    console.warn(`[AI CLIENT] Primary model (${primaryModel}) failed for ${feature}: ${error.message}. Retrying with fallback model...`);
+    const fallbackModel = primaryModel === 'gemini-2.5-flash' ? 'gemini-2.5-flash-lite' : 'gemini-2.5-flash';
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      return await executeGeneration(fallbackModel, prompt, systemInstruction, base64Media, feature);
+    } catch (retryError: any) {
+      createErrorResponse(retryError, fallbackModel);
+      throw new Error('AI Generation failed. The provider is currently overloaded or unavailable. Please try again shortly.');
+    }
   }
 }
 

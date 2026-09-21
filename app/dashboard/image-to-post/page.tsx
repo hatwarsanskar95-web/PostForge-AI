@@ -11,6 +11,74 @@ import { useCreditCheck } from "@/hooks/use-credit-check";
 import { consumeGenerationCredit } from "@/app/actions/usage";
 import { GenerationLoader } from "@/components/ui/generation-loader";
 
+const MAX_ALLOWED_BYTES = 100 * 1024 * 1024; // 100 MB
+
+/**
+ * Creates an optimized high-resolution copy for AI analysis
+ * to ensure smooth transmission under Vercel serverless request limits
+ * while preserving fine text, certificates, and visual clarity.
+ */
+async function createOptimizedProcessingCopy(file: File): Promise<Blob> {
+  // If file is already small (under 3MB), return directly
+  if (file.size <= 3 * 1024 * 1024) {
+    return file;
+  }
+
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX_DIM = 2560;
+      let { width, height } = img;
+
+      if (width > MAX_DIM || height > MAX_DIM) {
+        if (width > height) {
+          height = Math.round((height * MAX_DIM) / width);
+          width = MAX_DIM;
+        } else {
+          width = Math.round((width * MAX_DIM) / height);
+          height = MAX_DIM;
+        }
+      }
+
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+
+      if (!ctx) {
+        resolve(file); // Fallback to original file
+        return;
+      }
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob && blob.size > 0) {
+            resolve(blob);
+          } else {
+            resolve(file);
+          }
+        },
+        "image/jpeg",
+        0.90
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+
+    img.src = url;
+  });
+}
+
 export default function ImageToPostPage() {
   const [image, setImage] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -27,14 +95,29 @@ export default function ImageToPostPage() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setImage(file);
-      setPreviewUrl(URL.createObjectURL(file));
+    if (!file) return;
+
+    if (file.size > MAX_ALLOWED_BYTES) {
+      setErrorMessage("Image size must be 100 MB or less.");
+      setImage(null);
+      setPreviewUrl(null);
+      e.target.value = "";
+      return;
     }
+
+    setErrorMessage(null);
+    setImage(file);
+    setPreviewUrl(URL.createObjectURL(file));
   };
 
   const handleGenerate = async () => {
     if (!image) return;
+
+    if (image.size > MAX_ALLOWED_BYTES) {
+      setErrorMessage("Image size must be 100 MB or less.");
+      return;
+    }
+
     const hasCredits = await verifyCredits();
     if (!hasCredits) return;
 
@@ -44,8 +127,9 @@ export default function ImageToPostPage() {
     setErrorMessage(null);
 
     try {
+      const processingBlob = await createOptimizedProcessingCopy(image);
       const formData = new FormData();
-      formData.append("image", image);
+      formData.append("image", processingBlob, image.name);
       if (context) {
         formData.append("context", context);
       }
@@ -70,7 +154,7 @@ export default function ImageToPostPage() {
         const errorMsg =
           data?.error ||
           (response.status === 413
-            ? "Image file is too large for the server. Please try a smaller image."
+            ? "Image size must be 100 MB or less."
             : response.status === 504
             ? "Request timed out. Please try again."
             : `Server returned an error (${response.status}). Please try again.`);
@@ -179,7 +263,7 @@ export default function ImageToPostPage() {
                       <FileUp size={20} className="text-gray-300" />
                     </div>
                     <span className="text-[14px] font-medium text-white mb-1">Click or drag image to upload</span>
-                    <span className="text-[13px] text-gray-500">PNG, JPG or WebP up to 50MB</span>
+                    <span className="text-[13px] text-gray-500">PNG, JPG or WebP up to 100MB</span>
                   </div>
                 )}
               </div>

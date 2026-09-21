@@ -1,32 +1,43 @@
 import { NextResponse } from 'next/server';
 import { generateAIContent } from '@/lib/ai/client';
 import { BASE_FORMATTING_RULES, ANTI_HALLUCINATION, LENGTH_RULES } from '@/lib/ai/prompts';
+import sharp from 'sharp';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' };
+const MAX_IMAGE_BYTES = 100 * 1024 * 1024; // 100 MB
 
 export async function POST(req: Request) {
   console.log('\n[IMAGE-TO-POST] ===== NEW REQUEST =====');
+  const t0 = performance.now();
   try {
     const formData = await req.formData();
     const file = formData.get('image') as File | null;
     const context = (formData.get('context') as string) || 'Not provided';
-    const t0 = performance.now();
+    
     console.log(`[IMAGE-TO-POST] Step 1 - File: ${file ? `name=${file.name}, size=${file.size}, type=${file.type}` : 'NULL'}`);
 
-    if (!file) {
+    if (!file || typeof (file as any).arrayBuffer !== 'function' || file.size === 0) {
       return NextResponse.json(
         { success: false, error: 'No image uploaded. Please select an image.' },
         { status: 400, headers: JSON_HEADERS }
       );
     }
 
-    const mimeType = file.type || 'image/jpeg';
+    if (file.size > MAX_IMAGE_BYTES) {
+      console.log(`[IMAGE-TO-POST] Step 2 FAIL - File too large: ${file.size} bytes`);
+      return NextResponse.json(
+        { success: false, error: 'Image size must be 100 MB or less.' },
+        { status: 400, headers: JSON_HEADERS }
+      );
+    }
+
+    const mimeType = (file.type || 'image/jpeg').toLowerCase();
     const validMimeTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
 
-    if (!validMimeTypes.includes(mimeType)) {
+    if (!validMimeTypes.includes(mimeType) && !file.name.match(/\.(jpe?g|png|webp)$/i)) {
       console.log(`[IMAGE-TO-POST] Step 2 FAIL - Invalid MIME: ${mimeType}`);
       return NextResponse.json(
         { success: false, error: 'Unsupported image format. Please upload a JPG, JPEG, PNG, or WEBP image.' },
@@ -34,19 +45,47 @@ export async function POST(req: Request) {
       );
     }
 
-    if (file.size > 20 * 1024 * 1024) {
-      console.log(`[IMAGE-TO-POST] Step 2 FAIL - File too large: ${file.size} bytes`);
-      return NextResponse.json(
-        { success: false, error: 'Image size must be less than 20MB.' },
-        { status: 400, headers: JSON_HEADERS }
-      );
-    }
-
     console.log(`[IMAGE-TO-POST] Step 2 - Validation passed. Processing image buffer...`);
     const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    const base64Image = `data:${mimeType};base64,${buffer.toString('base64')}`;
-    console.log(`[IMAGE-TO-POST] Converted to Base64: ${buffer.length} bytes in ${performance.now() - t0}ms`);
+    const inputBuffer = Buffer.from(arrayBuffer);
+
+    // Optimize processing copy using Sharp to ensure sharp text/details and optimal AI payload
+    let optimizedBuffer: Buffer;
+    let finalMimeType = 'image/jpeg';
+
+    try {
+      const imagePipeline = sharp(inputBuffer);
+      const metadata = await imagePipeline.metadata();
+
+      // If dimensions are extremely large (>2560px), resize keeping aspect ratio for high-res OCR
+      if (metadata.width && metadata.height && (metadata.width > 2560 || metadata.height > 2560)) {
+        imagePipeline.resize({
+          width: 2560,
+          height: 2560,
+          fit: 'inside',
+          withoutEnlargement: true
+        });
+      }
+
+      if (metadata.format === 'png') {
+        optimizedBuffer = await imagePipeline.png({ quality: 90, compressionLevel: 8 }).toBuffer();
+        finalMimeType = 'image/png';
+      } else if (metadata.format === 'webp') {
+        optimizedBuffer = await imagePipeline.webp({ quality: 90 }).toBuffer();
+        finalMimeType = 'image/webp';
+      } else {
+        optimizedBuffer = await imagePipeline.jpeg({ quality: 90, mozjpeg: true }).toBuffer();
+        finalMimeType = 'image/jpeg';
+      }
+
+      console.log(`[IMAGE-TO-POST] Optimized image: ${inputBuffer.length} bytes -> ${optimizedBuffer.length} bytes (${Math.round(performance.now() - t0)}ms)`);
+    } catch (sharpErr: any) {
+      console.warn(`[IMAGE-TO-POST] Sharp optimization warning: ${sharpErr.message}. Using fallback buffer.`);
+      optimizedBuffer = inputBuffer;
+      finalMimeType = mimeType;
+    }
+
+    const base64Image = `data:${finalMimeType};base64,${optimizedBuffer.toString('base64')}`;
 
     const systemInstruction = `You are a world-class LinkedIn personal branding expert and storytelling strategist.
 Task: Analyze the provided professional image and transform it into a premium, engaging LinkedIn post.

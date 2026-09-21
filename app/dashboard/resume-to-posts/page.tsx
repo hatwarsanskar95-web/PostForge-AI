@@ -67,12 +67,29 @@ function ResumeToPostsContent() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFile = e.target.files?.[0];
-    if (uploadedFile) setFile(uploadedFile);
+    if (!uploadedFile) return;
+
+    if (uploadedFile.size > 100 * 1024 * 1024) {
+      setErrorMessage("Resume file must be 100 MB or less.");
+      setFile(null);
+      e.target.value = "";
+      return;
+    }
+
+    setErrorMessage(null);
+    setFile(uploadedFile);
   };
 
   const handleAnalyze = async () => {
     if (!file) return;
+
+    if (file.size > 100 * 1024 * 1024) {
+      setErrorMessage("Resume file must be 100 MB or less.");
+      return;
+    }
+
     setIsAnalyzing(true);
+    setErrorMessage(null);
     setAnalysisData(null);
     setSelectedIdea(null);
     setGeneratedPost(null);
@@ -86,8 +103,31 @@ function ResumeToPostsContent() {
         body: formData,
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Unable to process the uploaded file. Please try again.");
+      const contentType = res.headers.get("content-type") || "";
+      let data: any = null;
+
+      if (contentType.includes("application/json")) {
+        try {
+          data = await res.json();
+        } catch {
+          data = null;
+        }
+      }
+
+      if (!res.ok) {
+        const errorMsg =
+          data?.error ||
+          (res.status === 413
+            ? "Resume file is too large. Please upload a file under 100 MB."
+            : res.status === 504
+            ? "Request timed out while analyzing document. Please try again."
+            : "Unable to process the uploaded file. Please ensure it is a valid resume and try again.");
+        throw new Error(errorMsg);
+      }
+
+      if (!data?.data?.categories) {
+        throw new Error(data?.error || "We couldn't extract resume sections. Please ensure the document is clear and try again.");
+      }
 
       setAnalysisData(data.data);
       // Save analysis to history silently
