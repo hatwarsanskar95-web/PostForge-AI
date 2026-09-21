@@ -155,15 +155,11 @@ export default function ImageToPostPage() {
         body: formData,
       });
 
-      const contentType = response.headers.get("content-type") || "";
       let data: any = null;
-
-      if (contentType.includes("application/json")) {
-        try {
-          data = await response.json();
-        } catch {
-          data = null;
-        }
+      try {
+        data = await response.json();
+      } catch {
+        data = null;
       }
 
       if (!response.ok) {
@@ -173,7 +169,7 @@ export default function ImageToPostPage() {
             ? "Image size must be 100 MB or less."
             : response.status === 504
             ? "Request timed out. Please try again."
-            : `Server returned an error (${response.status}). Please try again.`);
+            : "AI service is currently busy. Please try again in a few moments.");
         throw new Error(errorMsg);
       }
 

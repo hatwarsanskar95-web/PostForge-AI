@@ -127,21 +127,30 @@ export async function generateAIContent(
 ) {
   const primaryModel = getModelForFeature(feature);
 
-  try {
-    return await executeGeneration(primaryModel, prompt, systemInstruction, base64Media, feature);
-  } catch (error: any) {
-    console.warn(`[AI CLIENT] Primary model (${primaryModel}) failed for ${feature}: ${error.message}. Retrying with fallback model...`);
-    const fallbackModel = feature === 'image-to-post' 
-      ? 'gemini-flash-latest'
-      : (primaryModel === 'gemini-2.5-flash' ? 'gemini-2.5-flash-lite' : 'gemini-2.5-flash');
-    await new Promise(resolve => setTimeout(resolve, 1000));
+  // List of high-performing models in priority order
+  const candidateModels = Array.from(new Set([
+    primaryModel,
+    'gemini-2.5-flash-lite',
+    'gemini-3.5-flash-lite',
+    'gemini-3.5-flash',
+    'gemini-3.6-flash',
+    'gemini-flash-lite-latest',
+    'gemini-2.5-flash'
+  ])).filter(Boolean);
+
+  let lastError: any = null;
+
+  for (const model of candidateModels) {
     try {
-      return await executeGeneration(fallbackModel, prompt, systemInstruction, base64Media, feature);
-    } catch (retryError: any) {
-      createErrorResponse(retryError, fallbackModel);
-      throw new Error('AI Generation failed. The provider is currently overloaded or unavailable. Please try again shortly.');
+      return await executeGeneration(model, prompt, systemInstruction, base64Media, feature);
+    } catch (error: any) {
+      console.warn(`[AI CLIENT] Model (${model}) failed for ${feature}: ${error.message}. Trying next available fallback model...`);
+      lastError = error;
     }
   }
+
+  createErrorResponse(lastError, primaryModel);
+  throw new Error('AI Generation service is currently experiencing high demand. Please try again in a few moments.');
 }
 
 function createErrorResponse(error: any, model: string) {
