@@ -131,7 +131,9 @@ export async function generateAIContent(
     return await executeGeneration(primaryModel, prompt, systemInstruction, base64Media, feature);
   } catch (error: any) {
     console.warn(`[AI CLIENT] Primary model (${primaryModel}) failed for ${feature}: ${error.message}. Retrying with fallback model...`);
-    const fallbackModel = primaryModel === 'gemini-2.5-flash' ? 'gemini-2.5-flash-lite' : 'gemini-2.5-flash';
+    const fallbackModel = feature === 'image-to-post' 
+      ? 'gemini-flash-latest'
+      : (primaryModel === 'gemini-2.5-flash' ? 'gemini-2.5-flash-lite' : 'gemini-2.5-flash');
     await new Promise(resolve => setTimeout(resolve, 1000));
     try {
       return await executeGeneration(fallbackModel, prompt, systemInstruction, base64Media, feature);
